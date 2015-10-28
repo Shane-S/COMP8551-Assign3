@@ -23,9 +23,9 @@ cl_context CreateContext()
 	// First, select an OpenCL platform to run on.  For this example, we
 	// simply choose the first available platform.  Normally, you would
 	// query for all available platforms and select the most appropriate one.
-	cl_platform_id firstPlatformId;
+	cl_platform_id firstPlatformId[2];
 	cl_uint numPlatforms;
-	cl_int errNum = clGetPlatformIDs(1, &firstPlatformId, &numPlatforms);
+	cl_int errNum = clGetPlatformIDs(2, firstPlatformId, &numPlatforms);
 	if (!CheckOpenCLError(errNum, "Failed to find any OpenCL platforms."))
 		return NULL;
 	if (numPlatforms <= 0)
@@ -39,7 +39,7 @@ cl_context CreateContext()
 	// Get information about the platform
 	char pname[1024];
 	size_t retsize;
-	errNum = clGetPlatformInfo(firstPlatformId, CL_PLATFORM_NAME,
+	errNum = clGetPlatformInfo(firstPlatformId[1], CL_PLATFORM_NAME,
 		sizeof(pname), (void *)pname, &retsize);
 	if (!CheckOpenCLError(errNum, "Could not get platform info"))
 		return NULL;
@@ -50,7 +50,7 @@ cl_context CreateContext()
 	cl_context_properties contextProperties[] =
 	{
 		CL_CONTEXT_PLATFORM,
-		(cl_context_properties)firstPlatformId,
+		(cl_context_properties)firstPlatformId[1],
 		0
 	};
 	cl_context context = NULL;
@@ -212,8 +212,8 @@ cl_program CreateProgram(cl_context context, cl_device_id device, const char* fi
 bool CreateMemObjects(cl_context context, cl_mem memObjects[2], cl_uint *randoms)
 {
 	
-	memObjects[0] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint) * 1024 * 768, randoms, NULL);
-	memObjects[2] = clCreateBuffer(context, CL_MEM_WRITE_ONLY, 1024 * 768, NULL, NULL);
+	memObjects[0] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint) * ARRAY_SIZE * 3, randoms, NULL);
+	memObjects[1] = clCreateBuffer(context, CL_MEM_WRITE_ONLY, ARRAY_SIZE * sizeof(cl_uchar4), NULL, NULL);
 
 	if (memObjects[0] == NULL || memObjects[1] == NULL)
 	{
@@ -226,13 +226,14 @@ bool CreateMemObjects(cl_context context, cl_mem memObjects[2], cl_uint *randoms
 
 //  Cleanup any created OpenCL resources
 void Cleanup(cl_context context, cl_command_queue commandQueue,
-	cl_program program, cl_kernel kernel, cl_mem memObjects[3])
+	cl_program program, cl_kernel kernel, cl_mem memObjects[2])
 {
-	for (int i = 0; i < 3; i++)
-	{
-		if (memObjects[i] != 0)
-			clReleaseMemObject(memObjects[i]);
-	}
+	if (memObjects[0] != 0)
+		clReleaseMemObject(memObjects[0]);
+
+	if (memObjects[1] != 0)
+		clReleaseMemObject(memObjects[1]);
+
 	if (commandQueue != 0)
 		clReleaseCommandQueue(commandQueue);
 
