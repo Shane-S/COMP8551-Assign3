@@ -62,15 +62,7 @@ bool CheckOpenCLError(cl_int errNum, const char *errMsg);
 /// Creates an OpenCL context using the first available platform, if any.
 /// </summary>
 /// <returns>An OpenCL context or NULL on failure.</returns>
-cl_context CreateContext();
-
-/// <summary>
-/// Creates a command queue for the first device of the selected platform.
-/// </summary>
-/// <param name="context">The OpenCL context to use, which specifies the platform on which to run.</param>
-/// <param name="device">Holds the first available device from the selected platform.</param>
-/// <returns>A command queue that can be given kernels to execute, or NULL if the function failed.</returns>
-cl_command_queue CreateCommandQueue(cl_context context, cl_device_id *device);
+cl_context CreateContext(CLPlatform* platform);
 
 /// <summary>
 /// Compiles the specified OpenCL kernel for the given device.

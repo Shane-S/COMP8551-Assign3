@@ -1,4 +1,3 @@
-#include <CL/opencl.h>
 #include <SDL2/SDL.h>
 #include <iostream>
 #include <random>
@@ -46,19 +45,37 @@ int main() {
 		return 1;
 	}
 	
-	CLPlatform* plats;
+	CLPlatform* platforms;
 	cl_uint numPlats;
-	if (GetCLPlatforms(&plats, &numPlats) != CL_SUCCESS) {
-		std::cout << "Shit" << std::endl;
+	cl_int errNum = 0;
+	errNum = GetCLPlatforms(&platforms, &numPlats);
+	if (errNum != CL_SUCCESS) {
+		PrintCLError(errNum);
+		return 2;
+	}
+	
+	for (int i = 0; i < numPlats; i++) {
+		std::cout << "Vendor: " << platforms[i].vendor << "; Name: " << platforms[i].name << std::endl;
+		for (int j = 0; j < platforms[i].numDevices; j++) {
+			std::cout << " type " << platforms[i].devices[j].type << ":" << std::endl;
+			if (platforms[i].devices[j].type & CL_DEVICE_TYPE_CPU)
+				std::cout << "CPU ";
+			if (platforms[i].devices[j].type & CL_DEVICE_TYPE_GPU)
+				std::cout << "GPU ";
+			if (platforms[i].devices[j].type & CL_DEVICE_TYPE_ACCELERATOR)
+				std::cout << "accelerator ";
+			if (platforms[i].devices[j].type & CL_DEVICE_TYPE_DEFAULT)
+				std::cout << "default ";
+
+			std::cout << " name=<" << platforms[i].devices[j].name << ">" << std::endl;
+		}
 	}
 
-	cl_context ctx = CreateContext();
-	cl_device_id dev;
-	cl_command_queue commandQueue = 0;
+	cl_context ctx = CreateContext(&platforms[0]);
+	cl_command_queue commandQueue = clCreateCommandQueue(ctx, platforms[0].devices[0].id, 0, NULL);
 	cl_program program = 0;
 	cl_kernel kernel = 0;
 	cl_mem memObjects[2] = { 0, 0 };
-	cl_int errNum = 0;
 
 	// Allocate like 3MB of memory to fit our random values
 	// Lol
@@ -68,9 +85,7 @@ int main() {
 	
 	// Get the pixels array for the texture; it will stay the same throughout the life of the program, so we can cache it
 	CreateMemObjects(ctx, memObjects, randoms);
-
-	commandQueue = CreateCommandQueue(ctx, &dev);
-	program = CreateProgram(ctx, dev, "H:\\MyCourses\\COMP8551\\COMP8551-Assign3\\Assign3\\src\\Random.cl");
+	program = CreateProgram(ctx, platforms[0].devices[0].id, "D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\src\\Random.cl");
 	kernel = clCreateKernel(program, "random_kernel", NULL);
 
 	if (errNum != CL_SUCCESS)

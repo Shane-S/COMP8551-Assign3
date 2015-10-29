@@ -155,6 +155,8 @@ cl_int GetCLDevices(CLPlatform* platform) {
 		strncpy_s(platform->devices[i].name, retsize + 1, param, retsize);
 		platform->devices[i].name[retsize] = 0;
 	}
+	platform->numDevices = numDevices;
+	return CL_SUCCESS;
 }
 
 
@@ -164,7 +166,7 @@ cl_int GetCLPlatforms(CLPlatform** platforms, cl_uint* numPlatforms) {
 	if (errNum != CL_SUCCESS) return errNum;
 
 	cl_platform_id *ids = (cl_platform_id*)malloc(sizeof(cl_platform_id)* num);
-	CLPlatform *plats = (CLPlatform*)malloc(sizeof(CLPlatform*) * num);
+	CLPlatform *plats = (CLPlatform*)malloc(sizeof(CLPlatform) * num);
 	errNum = clGetPlatformIDs(num, ids, nullptr);
 	if (errNum != CL_SUCCESS) {
 		free(ids);
@@ -175,7 +177,7 @@ cl_int GetCLPlatforms(CLPlatform** platforms, cl_uint* numPlatforms) {
 	char param[1024];
 	size_t retsize;
 	for (int i = 0; i < num; i++) {
-		
+		plats[i].id = ids[i];
 		// Get the platform profile. If the profile is EMBEDDED, then all devices on this machine will be EMBEDDED too;
 		// if it's FULL, then they can be a mix of both.
 		errNum = clGetPlatformInfo(ids[i], CL_PLATFORM_PROFILE, sizeof(param), (void *)param, &retsize);
@@ -205,8 +207,8 @@ cl_int GetCLPlatforms(CLPlatform** platforms, cl_uint* numPlatforms) {
 			free(ids);
 			return errNum;
 		}
-		if (sscanf_s(param, "%d %d", &plats[i].version.major, &plats[i].version.minor) != 2) // The return value is formatted as a string containing <major>.<minor>
-			fprintf(stderr, "GetOpenCLPlatforms: invalid version number encountered.");
+		if (sscanf_s(param, "OpenCL %d.%d", &plats[i].version.major, &plats[i].version.minor) != 2) // The return value is formatted as a string containing <major>.<minor>
+			fprintf(stderr, "GetOpenCLPlatforms: invalid version number encountered.\n");
 
 		errNum = clGetPlatformInfo(ids[i], CL_PLATFORM_VENDOR, sizeof(param), (void *)param, &retsize);
 		if (errNum != CL_SUCCESS) {
@@ -229,153 +231,28 @@ cl_int GetCLPlatforms(CLPlatform** platforms, cl_uint* numPlatforms) {
 		strncpy_s(plats[i].name, retsize + 1, param, retsize);
 		plats[i].name[retsize] = 0;
 	}
+
+	*platforms = plats;
+	*numPlatforms = num;
+	return CL_SUCCESS;
 }
 
 //  Create an OpenCL context on the first available platform using
 //  either a GPU or CPU depending on what is available.
-cl_context CreateContext()
+cl_context CreateContext(CLPlatform* platform)
 {
-	// Get the number of available platforms
-	// Note: should probably use a smart pointer here so we don't have to delete it whenever it goes out of scope
-	cl_platform_id *platformIds;
-	cl_uint numPlatforms;
-	cl_int errNum = clGetPlatformIDs(0, nullptr, &numPlatforms);
-	if (errNum != CL_SUCCESS) {
-		PrintCLError(errNum);
-		return NULL;
-	}
-
-	if (numPlatforms <= 0) {
-		std::cerr << "Failed to find any OpenCL platforms." << std::endl;
-		return NULL;
-	}
-	std::cout << std::endl << numPlatforms << " platforms in total" << std::endl;
-
-	// Now get list of platforms
-	platformIds = new cl_platform_id[numPlatforms];
-	errNum = clGetPlatformIDs(numPlatforms, platformIds, nullptr);
-	if (errNum != CL_SUCCESS) {
-		PrintCLError(errNum);
-		delete[] platformIds;
-		return NULL;
-	}
-
-	// Get information about the platform
-	char pname[1024];
-	size_t retsize;
-	for (int i = 0; i < numPlatforms; i++) {
-		errNum = clGetPlatformInfo(platformIds[i], CL_PLATFORM_NAME, sizeof(pname), (void *)pname, &retsize);
-		if (errNum != CL_SUCCESS) {
-			PrintCLError(errNum);
-			delete[] platformIds;
-			return NULL;
-		}
-		std::cout << std::endl << "Platform " << i << " name: " << pname << std::endl;
-	}
-
 	// Create a context from the first platform (for now)
 	cl_context_properties contextProperties[] =
 	{
 		CL_CONTEXT_PLATFORM,
-		(cl_context_properties)platformIds[0],
+		(cl_context_properties)platform->id,
 		0
 	};
 	cl_context context = NULL;
+	cl_int errNum;
 	context = clCreateContextFromType(contextProperties, CL_DEVICE_TYPE_ALL, NULL, NULL, &errNum);
-
-	if (errNum != CL_SUCCESS){
-		std::cout << CLErrorToString(errNum) << std::endl;
-		delete[] platformIds;
-		return NULL;
-	}
-
-	delete[] platformIds;
-	return context;
+	return errNum == CL_SUCCESS ? context : NULL;
 }
-
-cl_command_queue CreateCommandQueue(cl_context context, cl_device_id *device) {
-	
-	// Get number of devices
-	cl_int numDevices;
-	size_t retSize;
-	cl_int errNum = clGetContextInfo(context, CL_CONTEXT_NUM_DEVICES, sizeof(numDevices), (void *)&numDevices, &retSize);
-	
-	if (errNum != CL_SUCCESS) {
-		PrintCLError(errNum);
-		return NULL;
-	}
-	std::cout << std::endl << "There are " << numDevices << " devices." << std::endl;
-
-	// Get list of devices
-	cl_device_id *deviceList;
-	deviceList = (cl_device_id *)malloc(numDevices * sizeof(cl_device_id));
-	errNum = clGetContextInfo(context, CL_CONTEXT_DEVICES, numDevices * sizeof(cl_device_id), (void *)deviceList, &retSize);
-	if (!CheckOpenCLError(errNum, "Could not get device list!"))
-	{
-		PrintCLError(errNum);
-		std::cerr << " size = " << numDevices * sizeof(cl_device_id) << ";" << retSize << std::endl;
-		return NULL;
-	}
-
-
-	// Get device information for each device
-	cl_device_type devType;
-	std::cout << std::endl << "Device list:" << std::endl;
-	for (int i = 0; i < numDevices; i++)
-	{
-
-		std::cout << "   " << deviceList[i] << ": ";
-
-		// device type
-		errNum = clGetDeviceInfo(deviceList[i], CL_DEVICE_TYPE, sizeof(cl_device_type), (void *)&devType, &retSize);
-		if (!CheckOpenCLError(errNum, "ERROR getting device info!"))
-		{
-			free(deviceList);
-			return NULL;
-		}
-		std::cout << " type " << devType << ":" << std::endl;
-		if (devType & CL_DEVICE_TYPE_CPU)
-			std::cout << "CPU ";
-		if (devType & CL_DEVICE_TYPE_GPU)
-			std::cout << "GPU ";
-		if (devType & CL_DEVICE_TYPE_ACCELERATOR)
-			std::cout << "accelerator ";
-		if (devType & CL_DEVICE_TYPE_DEFAULT)
-			std::cout << "default ";
-
-		// device name
-		char devName[1024];
-		errNum = clGetDeviceInfo(deviceList[i], CL_DEVICE_NAME, 1024, (void *)devName, &retSize);
-		if (!CheckOpenCLError(errNum, "ERROR getting device name!"))
-		{
-			free(deviceList);
-			return NULL;
-		}
-		std::cout << " name=<" << devName << ">" << std::endl;
-
-	}
-	std::cout << std::endl;
-
-
-	// In this example, we just choose the first available device.  In a
-	// real program, you would likely use all available devices or choose
-	// the highest performance device based on OpenCL device queries
-	cl_command_queue commandQueue = clCreateCommandQueue(context, deviceList[0], 0, NULL);
-	if (commandQueue == NULL)
-	{
-		free(deviceList);
-		std::cerr << "Failed to create commandQueue for device 0";
-		return NULL;
-	}
-
-	*device = deviceList[0];
-
-	free(deviceList);
-
-	return commandQueue;
-}
-
-
 
 //  Create an OpenCL program from the kernel source file
 cl_program CreateProgram(cl_context context, cl_device_id device, const char* fileName) {
