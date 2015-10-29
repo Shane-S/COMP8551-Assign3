@@ -46,6 +46,12 @@ int main() {
 		return 1;
 	}
 	
+	CLPlatform* plats;
+	cl_uint numPlats;
+	if (GetCLPlatforms(&plats, &numPlats) != CL_SUCCESS) {
+		std::cout << "Shit" << std::endl;
+	}
+
 	cl_context ctx = CreateContext();
 	cl_device_id dev;
 	cl_command_queue commandQueue = 0;
@@ -64,12 +70,12 @@ int main() {
 	CreateMemObjects(ctx, memObjects, randoms);
 
 	commandQueue = CreateCommandQueue(ctx, &dev);
-	program = CreateProgram(ctx, dev, "D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\src\\Random.cl");
+	program = CreateProgram(ctx, dev, "H:\\MyCourses\\COMP8551\\COMP8551-Assign3\\Assign3\\src\\Random.cl");
 	kernel = clCreateKernel(program, "random_kernel", NULL);
 
 	if (errNum != CL_SUCCESS)
 	{
-		std::cerr << "Error setting kernel arguments." << std::endl;
+		PrintCLError(errNum);
 		Cleanup(ctx, commandQueue, program, kernel, memObjects);
 		return 1;
 	}
@@ -102,7 +108,7 @@ int main() {
 			0, NULL, NULL);
 		if (errNum != CL_SUCCESS)
 		{
-			std::cerr << "Error queuing kernel for execution." << std::endl;
+			std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
 			Cleanup(ctx, commandQueue, program, kernel, memObjects);
 			return 1;
 		}
@@ -121,7 +127,7 @@ int main() {
 			0, NULL, NULL);
 		if (errNum != CL_SUCCESS)
 		{
-			std::cerr << "Error reading result buffer." << std::endl;
+			std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
 			Cleanup(ctx, commandQueue, program, kernel, memObjects);
 			return 1;
 		}
