@@ -75,7 +75,7 @@ cl_program CreateProgram(cl_context context, cl_device_id device, const char* fi
 
 //  Create memory objects used as the arguments to the kernel
 //  The kernel takes three arguments: result (output), a (input), and b (input)
-bool CreateMemObjects(cl_context context, cl_mem memObjects[2], cl_uint *randoms);
+bool CreateMemObjects(cl_context context, cl_mem memObjects[3], cl_float2 *resolution, cl_float globalTime);
 
 /// <summary>
 /// Cleans up the OpenCL objects created throughout the program.

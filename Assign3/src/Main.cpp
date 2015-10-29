@@ -75,16 +75,17 @@ int main() {
 	cl_command_queue commandQueue = clCreateCommandQueue(ctx, platforms[0].devices[0].id, 0, NULL);
 	cl_program program = 0;
 	cl_kernel kernel = 0;
-	cl_mem memObjects[2] = { 0, 0 };
+	cl_mem memObjects[3] = { 0, 0, 0};
 
 	// Allocate like 3MB of memory to fit our random values
 	// Lol
 	// There's no rand() in OpenCL C, but we could use one of these techniques from StackOverlow if this becomes an issue
 	// http://stackoverflow.com/questions/9912143/how-to-get-a-random-number-in-opencl
-	cl_uint *randoms = (cl_uint*)std::malloc(sizeof(cl_uint) * ARRAY_SIZE * 3);
-	
+	cl_float2 resolution = { 1024, 768 };
+	cl_float globalTime = SDL_GetTicks() / 1000.f;
+
 	// Get the pixels array for the texture; it will stay the same throughout the life of the program, so we can cache it
-	CreateMemObjects(ctx, memObjects, randoms);
+	CreateMemObjects(ctx, memObjects, &resolution, globalTime);
 	program = CreateProgram(ctx, platforms[0].devices[0].id, "D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\src\\Random.cl");
 	kernel = clCreateKernel(program, "random_kernel", NULL);
 
@@ -95,11 +96,12 @@ int main() {
 		return 1;
 	}
 
-	size_t globalWorkSize[1] = { ARRAY_SIZE };
-	size_t localWorkSize[1] = { 1 };
+	size_t globalWorkSize[2] = { 1024, 768 };
+	size_t localWorkSize[2] = { 32, 32 };
 
-	errNum |= clSetKernelArg(kernel, 0, sizeof(cl_mem), &memObjects[0]);
-	errNum |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &memObjects[1]);
+	errNum |= clSetKernelArg(kernel, 0, sizeof(cl_float2), &resolution);
+	errNum |= clSetKernelArg(kernel, 1, sizeof(cl_float), &globalTime);
+	errNum |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &memObjects[2]);
 
 	while (1)
 	{
@@ -107,18 +109,10 @@ int main() {
 		if (event.type == SDL_QUIT)
 			break;
 
-		errNum |= clSetKernelArg(kernel, 0, sizeof(cl_mem), &memObjects[0]);
-		errNum |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &memObjects[1]);
+		globalTime = SDL_GetTicks() / 1000.f;
+		clSetKernelArg(kernel, 1, sizeof(cl_float), &globalTime);
 
-		for (int i = 0; i < ARRAY_SIZE; i++) {
-			randoms[i * 3] = std::rand();
-			randoms[(i * 3) + 1] = std::rand();
-			randoms[(i * 3) + 2] = std::rand();
-			//std::cout << randoms[i * 3] << " " << randoms[(i * 3) + 1] << " " << randoms[(i * 3) + 2] << std::endl;
-		}
-		clEnqueueWriteBuffer(commandQueue, memObjects[0], CL_TRUE, 0, ARRAY_SIZE * sizeof(cl_uint) * 3, randoms, 0, NULL, NULL);
-
-		errNum |= clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL,
+		errNum |= clEnqueueNDRangeKernel(commandQueue, kernel, 2, NULL,
 			globalWorkSize, localWorkSize,
 			0, NULL, NULL);
 		if (errNum != CL_SUCCESS)
@@ -137,7 +131,7 @@ int main() {
 		}
 
 		// Read the output buffer back to the Host
-		errNum = clEnqueueReadBuffer(commandQueue, memObjects[1], CL_TRUE,
+		errNum = clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE,
 			0, ARRAY_SIZE * sizeof(cl_uint), pixels,
 			0, NULL, NULL);
 		if (errNum != CL_SUCCESS)

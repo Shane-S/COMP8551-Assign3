@@ -301,12 +301,13 @@ cl_program CreateProgram(cl_context context, cl_device_id device, const char* fi
 
 //  Create memory objects used as the arguments to the kernel
 //  The kernel takes three arguments: result (output), a (input), and b (input)
-bool CreateMemObjects(cl_context context, cl_mem memObjects[2], cl_uint *randoms) {
+bool CreateMemObjects(cl_context context, cl_mem memObjects[3], cl_float2 *resolution, cl_float globalTime) {
 	
-	memObjects[0] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_uint) * ARRAY_SIZE * 3, randoms, NULL);
-	memObjects[1] = clCreateBuffer(context, CL_MEM_WRITE_ONLY, ARRAY_SIZE * sizeof(cl_uchar4), NULL, NULL);
+	memObjects[0] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_float2), resolution, NULL);
+	memObjects[1] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_float), &globalTime, NULL);
+	memObjects[2] = clCreateBuffer(context, CL_MEM_WRITE_ONLY, ARRAY_SIZE * sizeof(cl_uchar4), NULL, NULL);
 
-	if (memObjects[0] == NULL || memObjects[1] == NULL)
+	if (memObjects[0] == NULL || memObjects[1] == NULL || memObjects[2] == NULL)
 	{
 		std::cerr << "Error creating memory objects." << std::endl;
 		return false;
