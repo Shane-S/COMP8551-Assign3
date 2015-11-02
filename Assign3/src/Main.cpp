@@ -75,7 +75,7 @@ int main() {
 	cl_command_queue commandQueue = clCreateCommandQueue(ctx, platforms[0].devices[0].id, 0, NULL);
 	cl_program program = 0;
 	cl_kernel kernel = 0;
-	cl_mem memObjects[3] = { 0, 0, 0};
+	cl_mem resultMemObject = 0;
 
 	// Allocate like 3MB of memory to fit our random values
 	// Lol
@@ -85,14 +85,14 @@ int main() {
 	cl_float globalTime = SDL_GetTicks() / 1000.f;
 
 	// Get the pixels array for the texture; it will stay the same throughout the life of the program, so we can cache it
-	CreateMemObjects(ctx, memObjects, &resolution, globalTime);
+	CreateMemObjects(ctx, &resultMemObject, &resolution, globalTime);
 	program = CreateProgram(ctx, platforms[0].devices[0].id, "D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\src\\Random.cl");
 	kernel = clCreateKernel(program, "random_kernel", NULL);
 
 	if (errNum != CL_SUCCESS)
 	{
 		PrintCLError(errNum);
-		Cleanup(ctx, commandQueue, program, kernel, memObjects);
+		Cleanup(ctx, commandQueue, program, kernel, resultMemObject);
 		return 1;
 	}
 
@@ -101,7 +101,7 @@ int main() {
 
 	errNum |= clSetKernelArg(kernel, 0, sizeof(cl_float2), &resolution);
 	errNum |= clSetKernelArg(kernel, 1, sizeof(cl_float), &globalTime);
-	errNum |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &memObjects[2]);
+	errNum |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &resultMemObject);
 
 	while (1)
 	{
@@ -118,7 +118,7 @@ int main() {
 		if (errNum != CL_SUCCESS)
 		{
 			std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
-			Cleanup(ctx, commandQueue, program, kernel, memObjects);
+			Cleanup(ctx, commandQueue, program, kernel, resultMemObject);
 			return 1;
 		}
 
@@ -131,13 +131,13 @@ int main() {
 		}
 
 		// Read the output buffer back to the Host
-		errNum = clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE,
+		errNum = clEnqueueReadBuffer(commandQueue, resultMemObject, CL_TRUE,
 			0, ARRAY_SIZE * sizeof(cl_uint), pixels,
 			0, NULL, NULL);
 		if (errNum != CL_SUCCESS)
 		{
 			std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
-			Cleanup(ctx, commandQueue, program, kernel, memObjects);
+			Cleanup(ctx, commandQueue, program, kernel, resultMemObject);
 			return 1;
 		}
 
@@ -145,7 +145,6 @@ int main() {
 
 		SDL_RenderClear(ren);
 		SDL_RenderCopy(ren, tex, NULL, NULL);
-		SDL_RenderPresent(ren);
 		SDL_RenderPresent(ren);
 	}
 

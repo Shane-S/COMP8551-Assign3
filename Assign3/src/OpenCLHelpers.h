@@ -1,6 +1,14 @@
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
 
+#ifdef __APPLE__
+
+#include <OpenCL/opencl.h>
+
+#else
+
 #include <CL/opencl.h>
+
+#endif
 #define ARRAY_SIZE (1024 * 768)
 
 typedef enum CLProfile {
@@ -75,7 +83,7 @@ cl_program CreateProgram(cl_context context, cl_device_id device, const char* fi
 
 //  Create memory objects used as the arguments to the kernel
 //  The kernel takes three arguments: result (output), a (input), and b (input)
-bool CreateMemObjects(cl_context context, cl_mem memObjects[3], cl_float2 *resolution, cl_float globalTime);
+bool CreateMemObjects(cl_context context, cl_mem* resultMemObject, cl_float2 *resolution, cl_float globalTime);
 
 /// <summary>
 /// Cleans up the OpenCL objects created throughout the program.
@@ -85,7 +93,7 @@ bool CreateMemObjects(cl_context context, cl_mem memObjects[3], cl_float2 *resol
 /// <param name="program">The OpenCL program compiled for a particular device.</param>
 /// <param name="kernel">The OpenCL kernel.</param>
 /// <param name="memObjects">The array holding OpenCL memory objects with kernel arguments.</param>
-void Cleanup(cl_context context, cl_command_queue commandQueue, cl_program program, cl_kernel kernel, cl_mem memObjects[2]);
+void Cleanup(cl_context context, cl_command_queue commandQueue, cl_program program, cl_kernel kernel, cl_mem resultMemObject);
 
 /// <summary>
 /// Maps OpenCL error codes to strings.
