@@ -20,5 +20,5 @@ __kernel void random_kernel(const float2 resolution, const float iGlobalTime, __
 	result[offset].s0 = (uchar)(c1 * 255);
 	result[offset].s1 = (uchar)(c2 * 255);
 	result[offset].s2 = (uchar)(c3 * 255);
-	result[offset].s3 = 255;// gid % 255;//;
+	result[offset].s3 = 255;
 }

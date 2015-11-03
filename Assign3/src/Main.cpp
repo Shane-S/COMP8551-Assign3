@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include <iostream>
 #include <random>
 #include "OpenCLHelpers.h"
@@ -11,15 +12,39 @@ int main() {
 		return 1;
 	}
 
+	int initflags = IMG_INIT_PNG;
+	int returnedflags = IMG_Init(initflags);
+	if (returnedflags & initflags != initflags) {
+		std::cerr << "Shit: " << IMG_GetError() << std::endl;
+		return 2;
+	}
+
+	// load sample.png into image
+	SDL_Surface *image_raw;
+	SDL_Surface *image_argb8888;
+	SDL_RWops *rwop;
+	rwop = SDL_RWFromFile("D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\cat.png", "rb");
+	image_raw = IMG_LoadPNG_RW(rwop);
+	if (!image_raw) {
+		fprintf(stderr, "IMG_LoadPNG_RW: %s\n", IMG_GetError());
+		return 1337;
+	}
+
+	image_argb8888 = SDL_ConvertSurfaceFormat(image_raw, SDL_PIXELFORMAT_ARGB8888, 0);
+	if (!image_argb8888) {
+		std::cerr << "You're fucked: " << SDL_GetError() << std::endl;
+		return 1338;
+	}
+
 	SDL_Event event;
 	SDL_Rect r;
-	r.w = 1024;
-	r.h = 768;
+	r.w = image_argb8888->w;
+	r.h = image_argb8888->h;
 	r.x = 0;
 	r.y = 0;
 
 	// create a window to display our procedural texture
-	SDL_Window *win = SDL_CreateWindow("SDL_CreateTexture", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1024, 768, SDL_WINDOW_RESIZABLE);
+	SDL_Window *win = SDL_CreateWindow("SDL_CreateTexture", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, image_argb8888->w, image_argb8888->h, SDL_WINDOW_RESIZABLE);
 	if (win == nullptr){
 		std::cout << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
 		SDL_Quit();
@@ -36,7 +61,7 @@ int main() {
 		return 1;
 	}
 
-	SDL_Texture *tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 1024, 768);
+	SDL_Texture *tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, r.w, r.h);
 	if (tex == nullptr){
 		SDL_DestroyRenderer(ren);
 		SDL_DestroyWindow(win);
@@ -81,7 +106,7 @@ int main() {
 	// Lol
 	// There's no rand() in OpenCL C, but we could use one of these techniques from StackOverlow if this becomes an issue
 	// http://stackoverflow.com/questions/9912143/how-to-get-a-random-number-in-opencl
-	cl_float2 resolution = { 1024, 768 };
+	cl_float2 resolution = { r.w, r.h };
 	cl_float globalTime = SDL_GetTicks() / 1000.f;
 
 	// Get the pixels array for the texture; it will stay the same throughout the life of the program, so we can cache it
@@ -103,45 +128,54 @@ int main() {
 	errNum |= clSetKernelArg(kernel, 1, sizeof(cl_float), &globalTime);
 	errNum |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &resultMemObject);
 
+	void *pixels;
+	int pitch;
+	// this will hold our pixel array for manipulation
+	if (SDL_LockTexture(tex, NULL, &pixels, &pitch) < 0) {
+		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
+		return 1;
+	}
+	
+	std::memcpy(pixels, image_argb8888->pixels, image_argb8888->w * image_argb8888->h * 4);
+	SDL_UnlockTexture(tex);
+
 	while (1)
 	{
 		SDL_PollEvent(&event);
 		if (event.type == SDL_QUIT)
 			break;
 
-		globalTime = SDL_GetTicks() / 1000.f;
-		clSetKernelArg(kernel, 1, sizeof(cl_float), &globalTime);
+		//globalTime = SDL_GetTicks() / 1000.f;
+		//clSetKernelArg(kernel, 1, sizeof(cl_float), &globalTime);
 
-		errNum |= clEnqueueNDRangeKernel(commandQueue, kernel, 2, NULL,
-			globalWorkSize, localWorkSize,
-			0, NULL, NULL);
-		if (errNum != CL_SUCCESS)
-		{
-			std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
-			Cleanup(ctx, commandQueue, program, kernel, resultMemObject);
-			return 1;
-		}
+		//errNum |= clEnqueueNDRangeKernel(commandQueue, kernel, 2, NULL,
+		//	globalWorkSize, localWorkSize,
+		//	0, NULL, NULL);
+		//if (errNum != CL_SUCCESS)
+		//{
+		//	std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
+		//	Cleanup(ctx, commandQueue, program, kernel, resultMemObject);
+		//	return 1;
+		//}
 
-		void *pixels;
-		int pitch;
-		// this will hold our pixel array for manipulation
-		if (SDL_LockTexture(tex, NULL, &pixels, &pitch) < 0) {
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
-			return 1;
-		}
+		///* this will hold our pixel array for manipulation*/
+		//if (SDL_LockTexture(tex, NULL, &pixels, &pitch) < 0) {
+		//	SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
+		//	return 1;
+		//}
 
-		// Read the output buffer back to the Host
-		errNum = clEnqueueReadBuffer(commandQueue, resultMemObject, CL_TRUE,
-			0, ARRAY_SIZE * sizeof(cl_uint), pixels,
-			0, NULL, NULL);
-		if (errNum != CL_SUCCESS)
-		{
-			std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
-			Cleanup(ctx, commandQueue, program, kernel, resultMemObject);
-			return 1;
-		}
+		// // Read the output buffer back to the Host
+		//errNum = clEnqueueReadBuffer(commandQueue, resultMemObject, CL_TRUE,
+		//	0, ARRAY_SIZE * sizeof(cl_uint), pixels,
+		//	0, NULL, NULL);
+		//if (errNum != CL_SUCCESS)
+		//{
+		//	std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
+		//	Cleanup(ctx, commandQueue, program, kernel, resultMemObject);
+		//	return 1;
+		//}
 
-		SDL_UnlockTexture(tex);
+		//SDL_UnlockTexture(tex);
 
 		SDL_RenderClear(ren);
 		SDL_RenderCopy(ren, tex, NULL, NULL);
