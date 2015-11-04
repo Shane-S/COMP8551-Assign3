@@ -122,7 +122,11 @@ int main() {
 	size_t globalWorkSize[2] = { r.w, r.h };
 	size_t localWorkSize[2] = { 32, 32 };
 
-	float filter[FILTER_SIZE * FILTER_SIZE] = { 0.5f };
+	float filter[FILTER_SIZE * FILTER_SIZE] = { 0.00296902f, 0.0133062f, 0.0219382f, 0.0133062f, 0.00296902f,
+												0.0133062f, 0.0596343f, 0.0983203f, 0.0596343f, 0.0133062f,
+												0.0219382f, 0.0983203f, 0.162103f, 0.0983203f, 0.0219382f,
+												0.0133062f, 0.0596343f, 0.0983203f, 0.0596343f, 0.0133062f,
+												0.00296902f, 0.0133062f, 0.0219382f, 0.0133062f, 0.00296902f};
 	void *pixels;
 	int pitch;
 

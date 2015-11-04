@@ -1,5 +1,5 @@
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
-#define FILTER_SIZE 9
+#define FILTER_SIZE 5
 #ifdef __APPLE__
 
 #include <OpenCL/opencl.h>
