@@ -6,6 +6,7 @@
 
 #define IMAGE_PATH /*"D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\cat.png"*/ "D:\\Trevor\\Repos\\COMP8551-Assign3\\Assign3\\cat.png"
 #define KERNAL_PATH /*"D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\src\\Filter.cl"*/"D:\\Trevor\\Repos\\COMP8551-Assign3\\Assign3\\src\\Filter.cl"
+
 #undef main
 
 int main() {
@@ -125,6 +126,8 @@ int main() {
 	size_t localWorkSize[2] = { 32, 32 };
 
 	float filter[FILTER_SIZE * FILTER_SIZE];
+
+	// Generate a Gaussian Filter
 	GaussianFilter(filter);
 
 	void *pixels;
