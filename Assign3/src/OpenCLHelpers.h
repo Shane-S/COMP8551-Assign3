@@ -1,6 +1,8 @@
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
-#define FILTER_SIZE 5
-#define SIGMA 1.0
+#define FILTER_SIZE 9
+#define SIGMA 15
+#define GAUSSIAN true
+
 #ifdef __APPLE__
 
 #include <OpenCL/opencl.h>

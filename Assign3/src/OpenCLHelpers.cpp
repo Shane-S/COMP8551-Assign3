@@ -346,19 +346,19 @@ void GaussianFilter(float* filter)
 {
 	// 2D representation of the filter
 	double kernal[FILTER_SIZE][FILTER_SIZE];
-	int dimenstion = FILTER_SIZE / 2;
+	int dimension = FILTER_SIZE / 2;
 	// sum is for normalization
 	double sum = 0.0;
 
 	// generate a kernal
-	for (int x = -dimenstion; x <= dimenstion; x++)
+	for (int x = -dimension; x <= dimension; x++)
 	{
-		for (int y = -dimenstion; y <= dimenstion; y++)
+		for (int y = -dimension; y <= dimension; y++)
 		{
 			// G(x,y) = (1 / 2 * PI * sigma^2) * e^-((x^2 + y^2) / 2 * sigma^2)
-			kernal[x + dimenstion][y + dimenstion] = (1 / (2 * M_PI * (SIGMA * SIGMA))) * exp(-((x * x + y * y) / (2 * SIGMA * SIGMA)));
+			kernal[x + dimension][y + dimension] = (1 / (2 * M_PI * (SIGMA * SIGMA))) * exp(-((x * x + y * y) / (2 * SIGMA * SIGMA)));
 			// Store the sum for normalization
-			sum += kernal[x + dimenstion][y + dimenstion];
+			sum += kernal[x + dimension][y + dimension];
 		}
 	}
 
@@ -371,8 +371,16 @@ void GaussianFilter(float* filter)
 			kernal[i][j] /= sum;
 			// Store in the 1D array
 			filter[i * FILTER_SIZE + j] = kernal[i][j];
-			//std::cout << kernal[i][j] << +" ";
+
+			if (!GAUSSIAN)
+			{
+				filter[i * FILTER_SIZE + j] = 0;
+			}
 		}
-		//std::cout << std::endl;
+	}
+
+	if (!GAUSSIAN)
+	{
+		filter[dimension * FILTER_SIZE + dimension] = 1.0;
 	}
 }

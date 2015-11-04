@@ -1,4 +1,4 @@
-#define FILTER_SIZE 5
+#define FILTER_SIZE 9
 
 /**
  * Gives the offset into a one-dimensional array given its x and y coordinates and the width.
@@ -31,8 +31,8 @@ __kernel void gaussian_kernel(const uint2 dimensions, __global const float* filt
 		}
 	}
 
-	result[offset].s0 = (uchar)(sum.s0 * 255);
-	result[offset].s1 = (uchar)(sum.s1 * 255);
-	result[offset].s2 = (uchar)(sum.s2 * 255);
+	result[offset].s0 = (uchar)(sum.s0);
+	result[offset].s1 = (uchar)(sum.s1);
+	result[offset].s2 = (uchar)(sum.s2);
 	result[offset].s3 = input_image[offset].s3;
 }
