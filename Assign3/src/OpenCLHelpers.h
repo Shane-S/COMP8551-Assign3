@@ -1,5 +1,6 @@
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
 #define FILTER_SIZE 5
+#define SIGMA 1.0
 #ifdef __APPLE__
 
 #include <OpenCL/opencl.h>
@@ -107,3 +108,9 @@ char* CLErrorToString(cl_int error);
 /// </summary>
 /// <param name="errNum">An OpenCL error code.</param>
 void PrintCLError(cl_int errNum);
+
+/// <summary>
+/// Generates a Gaussian filter.
+/// </summary>
+/// <param name="filter">A 1D array to store the filter.</param>
+void GaussianFilter(float* filter);

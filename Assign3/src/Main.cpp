@@ -4,6 +4,8 @@
 #include <random>
 #include "OpenCLHelpers.h"
 
+#define IMAGE_PATH "D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\cat.png" //"D:\\Trevor\\Repos\\COMP8551-Assign3\\Assign3\\cat.png"
+#define KERNAL_PATH "D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\src\\Filter.cl"//"D:\\Trevor\\Repos\\COMP8551-Assign3\\Assign3\\src\\Filter.cl"
 #undef main
 
 int main() {
@@ -23,7 +25,7 @@ int main() {
 	SDL_Surface *image_raw;
 	SDL_Surface *image_argb8888;
 	SDL_RWops *rwop;
-	rwop = SDL_RWFromFile("D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\cat.png", "rb");
+	rwop = SDL_RWFromFile(IMAGE_PATH, "rb"); // "D:\\Trevor\\Repos\\COMP8551-Assign3\\Assign3\\cat.png"
 	image_raw = IMG_LoadPNG_RW(rwop);
 	if (!image_raw) {
 		fprintf(stderr, "IMG_LoadPNG_RW: %s\n", IMG_GetError());
@@ -109,7 +111,7 @@ int main() {
 	cl_uint2 resolution = { r.w, r.h };
 
 	// Get the pixels array for the texture; it will stay the same throughout the life of the program, so we can cache it
-	program = CreateProgram(ctx, platforms[0].devices[0].id, "D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\src\\Filter.cl");
+	program = CreateProgram(ctx, platforms[0].devices[0].id, KERNAL_PATH); //"D:\\Trevor\\Repos\\COMP8551-Assign3\\Assign3\\src\\Filter.cl"
 	kernel = clCreateKernel(program, "gaussian_kernel", NULL);
 
 	if (errNum != CL_SUCCESS)
@@ -122,11 +124,13 @@ int main() {
 	size_t globalWorkSize[2] = { r.w, r.h };
 	size_t localWorkSize[2] = { 32, 32 };
 
-	float filter[FILTER_SIZE * FILTER_SIZE] = { 0.00296902f, 0.0133062f, 0.0219382f, 0.0133062f, 0.00296902f,
+	float filter[FILTER_SIZE * FILTER_SIZE]; /* = { 0.00296902f, 0.0133062f, 0.0219382f, 0.0133062f, 0.00296902f,
 												0.0133062f, 0.0596343f, 0.0983203f, 0.0596343f, 0.0133062f,
 												0.0219382f, 0.0983203f, 0.162103f, 0.0983203f, 0.0219382f,
 												0.0133062f, 0.0596343f, 0.0983203f, 0.0596343f, 0.0133062f,
-												0.00296902f, 0.0133062f, 0.0219382f, 0.0133062f, 0.00296902f};
+												0.00296902f, 0.0133062f, 0.0219382f, 0.0133062f, 0.00296902f};*/
+	GaussianFilter(filter);
+
 	void *pixels;
 	int pitch;
 

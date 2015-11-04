@@ -4,6 +4,8 @@
 #include <sstream>
 #include <cstdint>
 #include <cstring>
+#define _USE_MATH_DEFINES
+#include <math.h> 
 
 char* CLErrorToString(cl_int error) {
 	switch (error) {
@@ -337,4 +339,40 @@ void Cleanup(cl_context context, cl_command_queue commandQueue,
 	if (context != 0)
 		clReleaseContext(context);
 
+}
+
+// Generates a Gaussian filter
+void GaussianFilter(float* filter)
+{
+	// 2D representation of the filter
+	double kernal[FILTER_SIZE][FILTER_SIZE];
+	int dimenstion = FILTER_SIZE / 2;
+	// sum is for normalization
+	double sum = 0.0;
+
+	// generate a kernal
+	for (int x = -dimenstion; x <= dimenstion; x++)
+	{
+		for (int y = -dimenstion; y <= dimenstion; y++)
+		{
+			// G(x,y) = (1 / 2 * PI * sigma^2) * e^-((x^2 + y^2) / 2 * sigma^2)
+			kernal[x + dimenstion][y + dimenstion] = (1 / (2 * M_PI * (SIGMA * SIGMA))) * exp(-((x * x + y * y) / (2 * SIGMA * SIGMA)));
+			// Store the sum for normalization
+			sum += kernal[x + dimenstion][y + dimenstion];
+		}
+	}
+
+	// normalize the Kernel and store the kernal
+	for (int i = 0; i < FILTER_SIZE; ++i)
+	{
+		for (int j = 0; j < FILTER_SIZE; ++j)
+		{
+			// Normalize
+			kernal[i][j] /= sum;
+			// Store in the 1D array
+			filter[i * FILTER_SIZE + j] = kernal[i][j];
+			//std::cout << kernal[i][j] << +" ";
+		}
+		//std::cout << std::endl;
+	}
 }
