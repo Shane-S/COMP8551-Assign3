@@ -1,10 +1,10 @@
-__kernel void random_kernel(const float2 resolution, const float iGlobalTime, __global uchar4 *result)
+__kernel void invert_kernel(__global uchar4 *result)
 {
 	// pixel format is ARGB, but since we're little endian, 0 = b, 1 = g, etc.
 	int x = get_global_id(0);
 	int y = get_global_id(1);
-	int offset = x + (resolution.x * y);
-	
+	int offset = x + (1024 * y);
+
 	float2 coords = (float2)(x, y);
 	float2 p = coords.xy / resolution.xy;
 	p *= 2.f;

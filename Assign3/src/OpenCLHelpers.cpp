@@ -301,11 +301,13 @@ cl_program CreateProgram(cl_context context, cl_device_id device, const char* fi
 
 //  Create memory objects used as the arguments to the kernel
 //  The kernel takes three arguments: result (output), a (input), and b (input)
-bool CreateMemObjects(cl_context context, cl_mem *resultMemObject, cl_float2 *resolution, cl_float globalTime) {
-	
-	*resultMemObject = clCreateBuffer(context, CL_MEM_WRITE_ONLY, ARRAY_SIZE * sizeof(cl_uchar4), NULL, NULL);
+bool CreateMemObjects(cl_context context, cl_float* filter, void* pixels, cl_mem memObjects[3]) {
 
-	if (*resultMemObject == NULL)
+	memObjects[0] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_float) * FILTER_SIZE * FILTER_SIZE, filter, NULL);
+	memObjects[1] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, ARRAY_SIZE * sizeof(cl_uchar4), pixels, NULL);
+	memObjects[2] = clCreateBuffer(context, CL_MEM_WRITE_ONLY, ARRAY_SIZE * sizeof(cl_uchar4), NULL, NULL);
+
+	if (memObjects[0] == NULL || memObjects[1] == NULL || memObjects[2] == NULL)
 	{
 		std::cerr << "Error creating memory objects." << std::endl;
 		return false;
@@ -316,9 +318,12 @@ bool CreateMemObjects(cl_context context, cl_mem *resultMemObject, cl_float2 *re
 
 //  Cleanup any created OpenCL resources
 void Cleanup(cl_context context, cl_command_queue commandQueue,
-	cl_program program, cl_kernel kernel, cl_mem resultMemObject) {
-	if (resultMemObject != 0)
-		clReleaseMemObject(resultMemObject);
+	cl_program program, cl_kernel kernel, cl_mem memObjects[3]) {
+	
+	for (int i = 0; i < sizeof(memObjects) / sizeof(cl_mem); i++) {
+		if (memObjects != 0)
+			clReleaseMemObject(memObjects[i]);
+	}
 
 	if (commandQueue != 0)
 		clReleaseCommandQueue(commandQueue);

@@ -26,6 +26,8 @@
     <ClInclude Include="src\OpenCLHelpers.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="src\Filter.cl" />
+    <None Include="src\Invert.cl" />
     <None Include="src\Random.cl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

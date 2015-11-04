@@ -100,36 +100,32 @@ int main() {
 	cl_command_queue commandQueue = clCreateCommandQueue(ctx, platforms[0].devices[0].id, 0, NULL);
 	cl_program program = 0;
 	cl_kernel kernel = 0;
-	cl_mem resultMemObject = 0;
+	cl_mem memObjects[3] = { 0 };
 
 	// Allocate like 3MB of memory to fit our random values
 	// Lol
 	// There's no rand() in OpenCL C, but we could use one of these techniques from StackOverlow if this becomes an issue
 	// http://stackoverflow.com/questions/9912143/how-to-get-a-random-number-in-opencl
-	cl_float2 resolution = { r.w, r.h };
-	cl_float globalTime = SDL_GetTicks() / 1000.f;
+	cl_uint2 resolution = { r.w, r.h };
 
 	// Get the pixels array for the texture; it will stay the same throughout the life of the program, so we can cache it
-	CreateMemObjects(ctx, &resultMemObject, &resolution, globalTime);
-	program = CreateProgram(ctx, platforms[0].devices[0].id, "D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\src\\Random.cl");
-	kernel = clCreateKernel(program, "random_kernel", NULL);
+	program = CreateProgram(ctx, platforms[0].devices[0].id, "D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\src\\Filter.cl");
+	kernel = clCreateKernel(program, "gaussian_kernel", NULL);
 
 	if (errNum != CL_SUCCESS)
 	{
 		PrintCLError(errNum);
-		Cleanup(ctx, commandQueue, program, kernel, resultMemObject);
+		Cleanup(ctx, commandQueue, program, kernel, memObjects);
 		return 1;
 	}
 
-	size_t globalWorkSize[2] = { 1024, 768 };
+	size_t globalWorkSize[2] = { r.w, r.h };
 	size_t localWorkSize[2] = { 32, 32 };
 
-	errNum |= clSetKernelArg(kernel, 0, sizeof(cl_float2), &resolution);
-	errNum |= clSetKernelArg(kernel, 1, sizeof(cl_float), &globalTime);
-	errNum |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &resultMemObject);
-
+	float filter[FILTER_SIZE * FILTER_SIZE] = { 0.5f };
 	void *pixels;
 	int pitch;
+
 	// this will hold our pixel array for manipulation
 	if (SDL_LockTexture(tex, NULL, &pixels, &pitch) < 0) {
 		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
@@ -137,6 +133,35 @@ int main() {
 	}
 	
 	std::memcpy(pixels, image_argb8888->pixels, image_argb8888->w * image_argb8888->h * 4);
+
+	CreateMemObjects(ctx, filter, pixels, memObjects);
+
+	errNum |= clSetKernelArg(kernel, 0, sizeof(cl_uint2), &resolution);
+	errNum |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &memObjects[0]);
+	errNum |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &memObjects[1]);
+	errNum |= clSetKernelArg(kernel, 3, sizeof(cl_mem), &memObjects[2]);
+
+	errNum |= clEnqueueNDRangeKernel(commandQueue, kernel, 2, NULL,
+		globalWorkSize, localWorkSize,
+		0, NULL, NULL);
+	if (errNum != CL_SUCCESS)
+	{
+		std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
+		Cleanup(ctx, commandQueue, program, kernel, memObjects);
+		return 1;
+	}
+
+	// Read the output buffer back to the Host
+	errNum = clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE,
+		0, ARRAY_SIZE * sizeof(cl_uchar4), pixels,
+		0, NULL, NULL);
+	if (errNum != CL_SUCCESS)
+	{
+		std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
+		Cleanup(ctx, commandQueue, program, kernel, memObjects);
+		return 1;
+	}
+
 	SDL_UnlockTexture(tex);
 
 	while (1)
@@ -144,38 +169,6 @@ int main() {
 		SDL_PollEvent(&event);
 		if (event.type == SDL_QUIT)
 			break;
-
-		//globalTime = SDL_GetTicks() / 1000.f;
-		//clSetKernelArg(kernel, 1, sizeof(cl_float), &globalTime);
-
-		//errNum |= clEnqueueNDRangeKernel(commandQueue, kernel, 2, NULL,
-		//	globalWorkSize, localWorkSize,
-		//	0, NULL, NULL);
-		//if (errNum != CL_SUCCESS)
-		//{
-		//	std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
-		//	Cleanup(ctx, commandQueue, program, kernel, resultMemObject);
-		//	return 1;
-		//}
-
-		///* this will hold our pixel array for manipulation*/
-		//if (SDL_LockTexture(tex, NULL, &pixels, &pitch) < 0) {
-		//	SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
-		//	return 1;
-		//}
-
-		// // Read the output buffer back to the Host
-		//errNum = clEnqueueReadBuffer(commandQueue, resultMemObject, CL_TRUE,
-		//	0, ARRAY_SIZE * sizeof(cl_uint), pixels,
-		//	0, NULL, NULL);
-		//if (errNum != CL_SUCCESS)
-		//{
-		//	std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
-		//	Cleanup(ctx, commandQueue, program, kernel, resultMemObject);
-		//	return 1;
-		//}
-
-		//SDL_UnlockTexture(tex);
 
 		SDL_RenderClear(ren);
 		SDL_RenderCopy(ren, tex, NULL, NULL);
