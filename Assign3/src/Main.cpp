@@ -164,11 +164,51 @@ int main() {
 
 	SDL_UnlockTexture(tex);
 
+	float prevTime = SDL_GetTicks() / 1000.0f;
+	float curTime;
 	while (1)
 	{
 		SDL_PollEvent(&event);
 		if (event.type == SDL_QUIT)
 			break;
+
+		curTime = SDL_GetTicks() / 1000.0f;
+		float deltaTime = curTime - prevTime;
+		for (int i = 0; i < FILTER_SIZE * FILTER_SIZE; i++) {
+			filter[i] += deltaTime / 100000.0f;
+		}
+		prevTime = curTime;
+
+		clEnqueueWriteBuffer(commandQueue, memObjects[0], CL_TRUE, 0, FILTER_SIZE * FILTER_SIZE * sizeof(cl_float), (void *)&filter[0],
+			0, NULL, NULL);
+
+		if (SDL_LockTexture(tex, NULL, &pixels, &pitch) < 0) {
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
+			return 1;
+		}
+
+		errNum |= clEnqueueNDRangeKernel(commandQueue, kernel, 2, NULL,
+			globalWorkSize, localWorkSize,
+			0, NULL, NULL);
+		if (errNum != CL_SUCCESS)
+		{
+			std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
+			Cleanup(ctx, commandQueue, program, kernel, memObjects);
+			return 1;
+		}
+
+		// Read the output buffer back to the Host
+		errNum = clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE,
+			0, ARRAY_SIZE * sizeof(cl_uchar4), pixels,
+			0, NULL, NULL);
+		if (errNum != CL_SUCCESS)
+		{
+			std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
+			Cleanup(ctx, commandQueue, program, kernel, memObjects);
+			return 1;
+		}
+
+		SDL_UnlockTexture(tex);
 
 		SDL_RenderClear(ren);
 		SDL_RenderCopy(ren, tex, NULL, NULL);
