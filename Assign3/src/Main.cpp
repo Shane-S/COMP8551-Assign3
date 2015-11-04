@@ -4,8 +4,18 @@
 #include <random>
 #include "OpenCLHelpers.h"
 
-#define IMAGE_PATH /*"D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\cat.png"*/ "D:\\Trevor\\Repos\\COMP8551-Assign3\\Assign3\\cat.png"
-#define KERNAL_PATH /*"D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\src\\Filter.cl"*/"D:\\Trevor\\Repos\\COMP8551-Assign3\\Assign3\\src\\Filter.cl"
+#define SHANE
+
+#ifdef TREVOR
+#define IMAGE_PATH "D:\\Trevor\\Repos\\COMP8551-Assign3\\Assign3\\cat.png"
+#define KERNAL_PATH "D:\\Trevor\\Repos\\COMP8551-Assign3\\Assign3\\src\\Filter.cl"
+#endif
+
+#ifdef SHANE
+#define IMAGE_PATH "D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\cat.png"
+#define KERNAL_PATH "D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\src\\Filter.cl"
+#endif
+
 #undef main
 
 int main() {
@@ -38,7 +48,6 @@ int main() {
 		return 1338;
 	}
 
-	SDL_Event event;
 	SDL_Rect r;
 	r.w = image_argb8888->w;
 	r.h = image_argb8888->h;
@@ -130,49 +139,56 @@ int main() {
 	void *pixels;
 	int pitch;
 
-	// this will hold our pixel array for manipulation
 	if (SDL_LockTexture(tex, NULL, &pixels, &pitch) < 0) {
 		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
 		return 1;
 	}
-	
 	std::memcpy(pixels, image_argb8888->pixels, image_argb8888->w * image_argb8888->h * 4);
-
 	CreateMemObjects(ctx, filter, pixels, memObjects);
-
-	errNum |= clSetKernelArg(kernel, 0, sizeof(cl_uint2), &resolution);
-	errNum |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &memObjects[0]);
-	errNum |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &memObjects[1]);
-	errNum |= clSetKernelArg(kernel, 3, sizeof(cl_mem), &memObjects[2]);
-
-	errNum |= clEnqueueNDRangeKernel(commandQueue, kernel, 2, NULL,
-		globalWorkSize, localWorkSize,
-		0, NULL, NULL);
-	if (errNum != CL_SUCCESS)
-	{
-		std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
-		Cleanup(ctx, commandQueue, program, kernel, memObjects);
-		return 1;
-	}
-
-	// Read the output buffer back to the Host
-	errNum = clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE,
-		0, ARRAY_SIZE * sizeof(cl_uchar4), pixels,
-		0, NULL, NULL);
-	if (errNum != CL_SUCCESS)
-	{
-		std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
-		Cleanup(ctx, commandQueue, program, kernel, memObjects);
-		return 1;
-	}
-
 	SDL_UnlockTexture(tex);
 
 	while (1)
 	{
+		SDL_Event event;
 		SDL_PollEvent(&event);
 		if (event.type == SDL_QUIT)
 			break;
+		else if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_g) {
+			if (SDL_LockTexture(tex, NULL, &pixels, &pitch) < 0) {
+				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
+				return 1;
+			}
+	
+			CreateMemObjects(ctx, filter, pixels, memObjects);
+
+			errNum |= clSetKernelArg(kernel, 0, sizeof(cl_uint2), &resolution);
+			errNum |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &memObjects[0]);
+			errNum |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &memObjects[1]);
+			errNum |= clSetKernelArg(kernel, 3, sizeof(cl_mem), &memObjects[2]);
+
+			errNum |= clEnqueueNDRangeKernel(commandQueue, kernel, 2, NULL,
+				globalWorkSize, localWorkSize,
+				0, NULL, NULL);
+			if (errNum != CL_SUCCESS)
+			{
+				std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
+				Cleanup(ctx, commandQueue, program, kernel, memObjects);
+				return 1;
+			}
+
+			// Read the output buffer back to the Host
+			errNum = clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE,
+				0, ARRAY_SIZE * sizeof(cl_uchar4), pixels,
+				0, NULL, NULL);
+			if (errNum != CL_SUCCESS)
+			{
+				std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
+				Cleanup(ctx, commandQueue, program, kernel, memObjects);
+				return 1;
+			}
+
+			SDL_UnlockTexture(tex);
+		}
 
 		SDL_RenderClear(ren);
 		SDL_RenderCopy(ren, tex, NULL, NULL);
