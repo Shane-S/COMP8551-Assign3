@@ -134,6 +134,8 @@ int main() {
 	size_t localWorkSize[2] = { 32, 32 };
 
 	float filter[FILTER_SIZE * FILTER_SIZE];
+
+	// Generate a Gaussian Filter
 	GaussianFilter(filter);
 
 	void *pixels;

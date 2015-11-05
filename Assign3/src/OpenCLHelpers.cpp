@@ -372,6 +372,7 @@ void GaussianFilter(float* filter)
 			// Store in the 1D array
 			filter[i * FILTER_SIZE + j] = kernal[i][j];
 
+			// Just in case we want to test with out a filter
 			if (!GAUSSIAN)
 			{
 				filter[i * FILTER_SIZE + j] = 0;
@@ -379,6 +380,7 @@ void GaussianFilter(float* filter)
 		}
 	}
 
+	// If we dont want a filter, make the center of the filter 1 so that there is no change to the image
 	if (!GAUSSIAN)
 	{
 		filter[dimension * FILTER_SIZE + dimension] = 1.0;
