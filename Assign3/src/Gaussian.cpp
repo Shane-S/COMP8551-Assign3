@@ -88,7 +88,7 @@ void SerialGaussianBlur(int width, int height, const float* filter, cl_uchar4 *i
 			result[offset].s0 = (cl_uchar)(sum.s0);
 			result[offset].s1 = (cl_uchar)(sum.s1);
 			result[offset].s2 = (cl_uchar)(sum.s2);
-			result[offset].s3 = 255;//1.0f;//input_image[offset].s3;
+			result[offset].s3 = input_image[offset].s3;
 		}
 	}
 

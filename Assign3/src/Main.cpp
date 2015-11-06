@@ -207,18 +207,6 @@ int main() {
 			            }
 
 			            SerialGaussianBlur(resolution.s0, resolution.s1, filter, (cl_uchar4*)pixels, (cl_uchar4*)result_buf);
-
-			            // Read the output buffer back to the Host
-			            errNum = clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE,
-				            0, ARRAY_SIZE * sizeof(cl_uchar4), pixels,
-				            0, NULL, NULL);
-			            if (errNum != CL_SUCCESS)
-			            {
-				            std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
-				            Cleanup(ctx, commandQueue, program, kernel, memObjects);
-				            return 1;
-			            }
-
 			            SDL_UnlockTexture(tex);
                 }
         }
