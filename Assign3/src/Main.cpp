@@ -153,6 +153,11 @@ int main() {
 	CreateMemObjects(ctx, filter, pixels, memObjects);
 	SDL_UnlockTexture(tex);
 
+	errNum |= clSetKernelArg(kernel, 0, sizeof(cl_uint2), &resolution);
+	errNum |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &memObjects[0]);
+	errNum |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &memObjects[1]);
+	errNum |= clSetKernelArg(kernel, 3, sizeof(cl_mem), &memObjects[2]);
+
     bool done = false;
 	while (!done)
 	{
@@ -170,11 +175,10 @@ int main() {
 				            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
 				            return 1;
 			            }
-	
-    		            errNum |= clSetKernelArg(kernel, 0, sizeof(cl_uint2), &resolution);
-			            errNum |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &memObjects[0]);
-			            errNum |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &memObjects[1]);
-			            errNum |= clSetKernelArg(kernel, 3, sizeof(cl_mem), &memObjects[2]);
+
+						// Writes the current pixels back into the buffer
+						clEnqueueWriteBuffer(commandQueue, memObjects[1], CL_TRUE, 0, sizeof(uint32_t) * image_argb8888->w * image_argb8888->h,
+							pixels, 0, NULL, NULL);
 
 			            errNum |= clEnqueueNDRangeKernel(commandQueue, kernel, 2, NULL,
 				            globalWorkSize, localWorkSize,
