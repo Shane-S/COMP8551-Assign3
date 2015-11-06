@@ -383,6 +383,50 @@ void GaussianFilter(float* filter)
 	// If we dont want a filter, make the center of the filter 1 so that there is no change to the image
 	if (!GAUSSIAN)
 	{
-		filter[dimension * FILTER_SIZE + dimension] = 1.0;
+		filter[dimension * FILTER_SIZE + dimension] = 1;
 	}
+}
+
+// Run the gaussian filter serially
+void SerialGaussianBlur(int width, int height, const float* filter, cl_uchar4 *input_image, cl_uchar4 *result)
+{
+	for (int x = 0; x < width; x++)
+	{
+		for (int y = 0; y < height; y++)
+		{
+			int offset = pos(x, y, width);
+
+			int dim = FILTER_SIZE / 2;
+			cl_float3 sum = { 0.0f, 0.0f, 0.0f };
+
+			for (int col = 0; col < FILTER_SIZE; col++)
+			{
+				for (int row = 0; row < FILTER_SIZE; row++) 
+				{
+					int offx = col - dim;
+					int offy = row - dim;
+					if (!(x + offx < 0 || x + offx > width - 1 ||
+						y + offy < 0 || y + offy > height - 1)) 
+					{
+						int off_img = pos(x + offx, y + offy, width);
+						int off_filter = pos(col, row, FILTER_SIZE);
+						sum.x += ((cl_float)input_image[off_img].x) * filter[off_filter];
+						sum.y += ((cl_float)input_image[off_img].y) * filter[off_filter];
+						sum.z += ((cl_float)input_image[off_img].z) * filter[off_filter];
+					}
+				}
+			}
+
+			result[offset].s0 = (cl_uchar)(sum.s0);
+			result[offset].s1 = (cl_uchar)(sum.s1);
+			result[offset].s2 = (cl_uchar)(sum.s2);
+			result[offset].s3 = input_image[offset].s3;
+		}
+	}
+}
+
+// Returns an index into a 1d array from a pair of 2d array indicies
+int pos(int x, int y, int width) 
+{
+	return x + (y * width);
 }

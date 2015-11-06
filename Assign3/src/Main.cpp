@@ -4,7 +4,7 @@
 #include <random>
 #include "OpenCLHelpers.h"
 
-#define SHANE
+#define TREVOR
 
 #ifdef TREVOR
 #define IMAGE_PATH "D:\\Trevor\\Repos\\COMP8551-Assign3\\Assign3\\cat.png"
@@ -177,6 +177,30 @@ int main() {
 				Cleanup(ctx, commandQueue, program, kernel, memObjects);
 				return 1;
 			}
+
+			// Read the output buffer back to the Host
+			errNum = clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE,
+				0, ARRAY_SIZE * sizeof(cl_uchar4), pixels,
+				0, NULL, NULL);
+			if (errNum != CL_SUCCESS)
+			{
+				std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
+				Cleanup(ctx, commandQueue, program, kernel, memObjects);
+				return 1;
+			}
+
+			SDL_UnlockTexture(tex);
+		}
+		else if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_s)
+		{
+			if (SDL_LockTexture(tex, NULL, &pixels, &pitch) < 0) {
+				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
+				return 1;
+			}
+
+			CreateMemObjects(ctx, filter, pixels, memObjects);
+
+			SerialGaussianBlur(resolution.s0, resolution.s1, (cl_float*)memObjects[0], (cl_uchar4*)memObjects[1], (cl_uchar4*)memObjects[2]);
 
 			// Read the output buffer back to the Host
 			errNum = clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE,
