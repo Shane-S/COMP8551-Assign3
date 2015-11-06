@@ -21,9 +21,15 @@
     <ClCompile Include="src\OpenCLHelpers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Gaussian.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\OpenCLHelpers.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Gaussian.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -19,10 +19,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Gaussian.cpp" />
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\OpenCLHelpers.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Gaussian.h" />
     <ClInclude Include="src\OpenCLHelpers.h" />
   </ItemGroup>
   <ItemGroup>
