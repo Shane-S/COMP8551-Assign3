@@ -7,7 +7,7 @@
 #include <CL/opencl.h>
 #endif
 
-#define FILTER_SIZE 3
+#define FILTER_SIZE 15
 #define SIGMA 15
 #define GAUSSIAN true
 

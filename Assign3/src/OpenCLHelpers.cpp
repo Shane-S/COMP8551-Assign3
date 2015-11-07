@@ -338,4 +338,3 @@ void Cleanup(cl_context context, cl_command_queue commandQueue,
 		clReleaseContext(context);
 
 }
-

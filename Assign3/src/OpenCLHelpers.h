@@ -1,14 +1,21 @@
 #pragma once
 
+#ifndef OPENCLHELPERS_H
+#define OPENCLHELPERS_H
+
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
 
 #ifdef __APPLE__
 
 #include <OpenCL/opencl.h>
+#include <sys/time.h>
 
 #else
 
 #include <CL/opencl.h>
+#include <Windows.h>
+
+int gettimeofday(struct timeval * tp, struct timezone * tzp);
 
 #endif
 #define ARRAY_SIZE (1024 * 640)
@@ -109,3 +116,5 @@ char* CLErrorToString(cl_int error);
 /// </summary>
 /// <param name="errNum">An OpenCL error code.</param>
 void PrintCLError(cl_int errNum);
+
+#endif

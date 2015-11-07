@@ -1,4 +1,4 @@
-#define FILTER_SIZE 3
+#define FILTER_SIZE 15
 
 /**
  * Gives the offset into a one-dimensional array given its x and y coordinates and the width.

@@ -5,7 +5,7 @@
 #include "OpenCLHelpers.h"
 #include "Gaussian.h"
 
-#define SHANE
+#define TREVOR
 
 #ifdef TREVOR
 #define IMAGE_PATH "D:\\Trevor\\Repos\\COMP8551-Assign3\\Assign3\\cat.png"
@@ -18,6 +18,59 @@
 #endif
 
 #undef main
+
+#ifdef __WINDOWS__
+
+/* FILETIME of Jan 1 1970 00:00:00. */
+static const unsigned __int64 epoch = ((unsigned __int64)116444736000000000ULL);
+
+/*
+* timezone information is stored outside the kernel so tzp isn't used anymore.
+*
+* Note: this function is not for Win32 high precision timing purpose. See
+* elapsed_time().
+*/
+int gettimeofday(struct timeval * tp, struct timezone * tzp)
+{
+	FILETIME    file_time;
+	SYSTEMTIME  system_time;
+	ULARGE_INTEGER ularge;
+
+	GetSystemTime(&system_time);
+	SystemTimeToFileTime(&system_time, &file_time);
+	ularge.LowPart = file_time.dwLowDateTime;
+	ularge.HighPart = file_time.dwHighDateTime;
+
+	tp->tv_sec = (long)((ularge.QuadPart - epoch) / 10000000L);
+	tp->tv_usec = (long)(system_time.wMilliseconds * 1000);
+
+	return 0;
+}
+
+#endif
+
+// Helper class for timing calculations
+class CTiming
+{
+public:
+	CTiming() {}
+	~CTiming() {}
+
+	void Start() { gettimeofday(&tvBegin, NULL); }
+	void End() { gettimeofday(&tvEnd, NULL); }
+	bool Diff(int &seconds, int &useconds)
+	{
+		long int diff = (tvEnd.tv_usec + 1000000 * tvEnd.tv_sec) -
+			(tvBegin.tv_usec + 1000000 * tvBegin.tv_sec);
+		seconds = diff / 1000000;
+		useconds = diff % 1000000;
+		return (diff<0) ? true : false;
+	}
+
+private:
+	struct timeval tvBegin, tvEnd, tvDiff;
+
+};
 
 int main() {
 	if (SDL_Init(SDL_INIT_VIDEO) != 0){
@@ -158,6 +211,9 @@ int main() {
 	errNum |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &memObjects[1]);
 	errNum |= clSetKernelArg(kernel, 3, sizeof(cl_mem), &memObjects[2]);
 
+	CTiming timer;
+	int seconds, useconds;
+
     bool done = false;
 	while (!done)
 	{
@@ -175,6 +231,8 @@ int main() {
 				            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
 				            return 1;
 			            }
+
+						timer.Start();
 
 						// Writes the current pixels back into the buffer
 						clEnqueueWriteBuffer(commandQueue, memObjects[1], CL_TRUE, 0, sizeof(uint32_t) * image_argb8888->w * image_argb8888->h,
@@ -201,6 +259,11 @@ int main() {
 				            return 1;
 			            }
 
+						timer.End();
+						if (timer.Diff(seconds, useconds))
+							std::cerr << "Warning: timer returned negative difference!" << std::endl;
+						std::cout << "OpenCL on GPU ran in " << seconds << "." << useconds << " seconds" << std::endl << std::endl;
+
 			            SDL_UnlockTexture(tex);
                         break;
 
@@ -210,7 +273,15 @@ int main() {
 				            return 1;
 			            }
 
+						timer.Start();
+
 			            SerialGaussianBlur(resolution.s0, resolution.s1, filter, (cl_uchar4*)pixels, (cl_uchar4*)result_buf);
+
+						timer.End();
+						if (timer.Diff(seconds, useconds))
+							std::cerr << "Warning: timer returned negative difference!" << std::endl;
+						std::cout << "Serially ran in " << seconds << "." << useconds << " seconds" << std::endl << std::endl;
+
 			            SDL_UnlockTexture(tex);
                 }
         }
