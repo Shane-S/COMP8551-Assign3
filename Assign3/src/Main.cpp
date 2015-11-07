@@ -144,21 +144,24 @@ int main() {
 		return 2;
 	}
 	
-	for (int i = 0; i < numPlats; i++) {
+	for (int i = 0; i < numPlats; i++) 
+	{
 		std::cout << "Vendor: " << platforms[i].vendor << "; Name: " << platforms[i].name << std::endl;
-		for (int j = 0; j < platforms[i].numDevices; j++) {
-			std::cout << " type " << platforms[i].devices[j].type << ":" << std::endl;
+		for (int j = 0; j < platforms[i].numDevices; j++) 
+		{
+			std::cout << "\ttype " << platforms[i].devices[j].type << ":" << std::endl;
 			if (platforms[i].devices[j].type & CL_DEVICE_TYPE_CPU)
-				std::cout << "CPU ";
+				std::cout << "  \tCPU ";
 			if (platforms[i].devices[j].type & CL_DEVICE_TYPE_GPU)
-				std::cout << "GPU ";
+				std::cout << "  \tGPU ";
 			if (platforms[i].devices[j].type & CL_DEVICE_TYPE_ACCELERATOR)
-				std::cout << "accelerator ";
+				std::cout << "  \taccelerator ";
 			if (platforms[i].devices[j].type & CL_DEVICE_TYPE_DEFAULT)
-				std::cout << "default ";
+				std::cout << "  \tdefault ";
 
-			std::cout << " name=<" << platforms[i].devices[j].name << ">" << std::endl;
+			std::cout << "name=<" << platforms[i].devices[j].name << ">" << std::endl;
 		}
+		std::cout << std::endl;
 	}
 
 	cl_context ctx = CreateContext(&platforms[0]);
@@ -173,7 +176,7 @@ int main() {
 	// http://stackoverflow.com/questions/9912143/how-to-get-a-random-number-in-opencl
 	cl_uint2 resolution = { r.w, r.h };
 
-	program = CreateProgram(ctx, platforms[0].devices[0].id, KERNAL_PATH); //"D:\\Trevor\\Repos\\COMP8551-Assign3\\Assign3\\src\\Filter.cl"
+	program = CreateProgram(ctx, platforms[0].devices[0].id, KERNAL_PATH);
 	kernel = clCreateKernel(program, "gaussian_kernel", NULL);
 
 	if (errNum != CL_SUCCESS)
@@ -226,63 +229,105 @@ int main() {
 
             case SDL_KEYDOWN:
                 switch(event.key.keysym.sym) {
-                    case SDLK_g:
-                        if (SDL_LockTexture(tex, NULL, &pixels, &pitch) < 0) {
-				            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
-				            return 1;
-			            }
+					case SDLK_g:
+					{
+						if (SDL_LockTexture(tex, NULL, &pixels, &pitch) < 0) {
+							SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
+							return 1;
+						}
 
 						timer.Start();
 
 						// Writes the current pixels back into the buffer
-						clEnqueueWriteBuffer(commandQueue, memObjects[1], CL_TRUE, 0, sizeof(uint32_t) * image_argb8888->w * image_argb8888->h,
+						clEnqueueWriteBuffer(commandQueue, memObjects[1], CL_TRUE, 0, sizeof(uint32_t)* image_argb8888->w * image_argb8888->h,
 							pixels, 0, NULL, NULL);
 
-			            errNum |= clEnqueueNDRangeKernel(commandQueue, kernel, 2, NULL,
-				            globalWorkSize, localWorkSize,
-				            0, NULL, NULL);
-			            if (errNum != CL_SUCCESS)
-			            {
-				            std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
-				            Cleanup(ctx, commandQueue, program, kernel, memObjects);
-				            return 1;
-			            }
+						errNum |= clEnqueueNDRangeKernel(commandQueue, kernel, 2, NULL,
+							globalWorkSize, localWorkSize,
+							0, NULL, NULL);
+						if (errNum != CL_SUCCESS)
+						{
+							std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
+							Cleanup(ctx, commandQueue, program, kernel, memObjects);
+							return 1;
+						}
 
-			            // Read the output buffer back to the Host
-			            errNum = clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE,
-				            0, ARRAY_SIZE * sizeof(cl_uchar4), pixels,
-				            0, NULL, NULL);
-			            if (errNum != CL_SUCCESS)
-			            {
-				            std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
-				            Cleanup(ctx, commandQueue, program, kernel, memObjects);
-				            return 1;
-			            }
+						// Read the output buffer back to the Host
+						errNum = clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE,
+							0, ARRAY_SIZE * sizeof(cl_uchar4), pixels,
+							0, NULL, NULL);
+						if (errNum != CL_SUCCESS)
+						{
+							std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
+							Cleanup(ctx, commandQueue, program, kernel, memObjects);
+							return 1;
+						}
 
 						timer.End();
 						if (timer.Diff(seconds, useconds))
 							std::cerr << "Warning: timer returned negative difference!" << std::endl;
 						std::cout << "OpenCL on GPU ran in " << seconds << "." << useconds << " seconds" << std::endl << std::endl;
 
-			            SDL_UnlockTexture(tex);
-                        break;
-
-                    case SDLK_s:
-                        if (SDL_LockTexture(tex, NULL, &pixels, &pitch) < 0) {
-				            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
-				            return 1;
-			            }
+						SDL_UnlockTexture(tex);
+						break;
+					}
+					case SDLK_s:
+					{
+						if (SDL_LockTexture(tex, NULL, &pixels, &pitch) < 0) {
+							SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
+							return 1;
+						}
 
 						timer.Start();
 
-			            SerialGaussianBlur(resolution.s0, resolution.s1, filter, (cl_uchar4*)pixels, (cl_uchar4*)result_buf);
+						SerialGaussianBlur(resolution.s0, resolution.s1, filter, (cl_uchar4*)pixels, (cl_uchar4*)result_buf);
 
 						timer.End();
 						if (timer.Diff(seconds, useconds))
 							std::cerr << "Warning: timer returned negative difference!" << std::endl;
-						std::cout << "Serially ran in " << seconds << "." << useconds << " seconds" << std::endl << std::endl;
+						std::cout << "Serially on CPU ran in " << seconds << "." << useconds << " seconds" << std::endl << std::endl;
 
-			            SDL_UnlockTexture(tex);
+						SDL_UnlockTexture(tex);
+						break;
+					}
+					case SDLK_c:
+					{
+						if (SDL_LockTexture(tex, NULL, &pixels, &pitch) < 0) {
+							SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
+							return 1;
+						}
+
+						timer.Start();
+
+						// Run on cpu here
+
+						timer.End();
+						if (timer.Diff(seconds, useconds))
+							std::cerr << "Warning: timer returned negative difference!" << std::endl;
+						std::cout << "OpenCL on CPU ran in " << seconds << "." << useconds << " seconds" << std::endl << std::endl;
+
+						SDL_UnlockTexture(tex);
+						break;
+					}
+					case SDLK_b:
+					{
+						if (SDL_LockTexture(tex, NULL, &pixels, &pitch) < 0) {
+							SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
+							return 1;
+						}
+
+						timer.Start();
+
+						// Run on both cpu and gpu here
+
+						timer.End();
+						if (timer.Diff(seconds, useconds))
+							std::cerr << "Warning: timer returned negative difference!" << std::endl;
+						std::cout << "OpenCL on CPU & GPU ran in " << seconds << "." << useconds << " seconds" << std::endl << std::endl;
+
+						SDL_UnlockTexture(tex);
+						break;
+					}
                 }
         }
 
