@@ -76,6 +76,8 @@ void GPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* filte
 		return;
 	}
 
+	cl_uint filterSize = FILTER_SIZE;
+	cl_uint offset = 0;
 	cl_context ctx = CreateContext(platform, 1, gpu);
 	cl_command_queue commandQueue = clCreateCommandQueue(ctx, gpu->id, 0, NULL);
 	cl_program program = CreateProgram(ctx, gpu->id, KERNEL_PATH);
@@ -88,9 +90,11 @@ void GPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* filte
 	CreateMemObjects(ctx, filter, pixels, resolution->x * resolution->y, memObjects);
 
 	errNum |= clSetKernelArg(kernel, 0, sizeof(cl_uint2), resolution);
-	errNum |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &memObjects[0]);
-	errNum |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &memObjects[1]);
-	errNum |= clSetKernelArg(kernel, 3, sizeof(cl_mem), &memObjects[2]);
+	errNum |= clSetKernelArg(kernel, 1, sizeof(cl_uint), &offset);
+	errNum |= clSetKernelArg(kernel, 2, sizeof(cl_uint), &filterSize);
+	errNum |= clSetKernelArg(kernel, 3, sizeof(cl_mem), &memObjects[0]);
+	errNum |= clSetKernelArg(kernel, 4, sizeof(cl_mem), &memObjects[1]);
+	errNum |= clSetKernelArg(kernel, 5, sizeof(cl_mem), &memObjects[2]);
 
 	errNum |= clEnqueueNDRangeKernel(commandQueue, kernel, 2, NULL,
 		globalWorkSize, localWorkSize,
@@ -152,6 +156,8 @@ void CPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* filte
 		return;
 	}
 
+	cl_uint filterSize = FILTER_SIZE;
+	cl_uint offset = 0;
 	cl_int errNum = 0;
 	cl_context ctx = CreateContext(platform, 1, cpu);
 	cl_command_queue commandQueue = clCreateCommandQueue(ctx, cpu->id, 0, NULL);
@@ -164,9 +170,11 @@ void CPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* filte
 	// Writes the current pixels back into the buffer
 	CreateMemObjects(ctx, filter, pixels, resolution->x * resolution->y, memObjects);
 	errNum |= clSetKernelArg(kernel, 0, sizeof(cl_uint2), resolution);
-	errNum |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &memObjects[0]);
-	errNum |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &memObjects[1]);
-	errNum |= clSetKernelArg(kernel, 3, sizeof(cl_mem), &memObjects[2]);
+	errNum |= clSetKernelArg(kernel, 1, sizeof(cl_uint), &offset);
+	errNum |= clSetKernelArg(kernel, 2, sizeof(cl_uint), &filterSize);
+	errNum |= clSetKernelArg(kernel, 3, sizeof(cl_mem), &memObjects[0]);
+	errNum |= clSetKernelArg(kernel, 4, sizeof(cl_mem), &memObjects[1]);
+	errNum |= clSetKernelArg(kernel, 5, sizeof(cl_mem), &memObjects[2]);
 
 	errNum |= clEnqueueNDRangeKernel(commandQueue, kernel, 2, NULL,
 		globalWorkSize, localWorkSize,
@@ -229,6 +237,8 @@ void CPUGPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* fi
 
 		uint32_t chunkSize = (resolution->x * resolution->y * sizeof(cl_uchar4)) / 2;
 		uint32_t remainderSize = (resolution->x * resolution->y * sizeof(cl_uchar4)) % 2;
+		cl_uint filterSize = FILTER_SIZE;
+		cl_uint offset = 0;
 		cl_int errNum = 0;
 		cl_context ctx = CreateContext(NULL, 2, devices);
 		cl_mem memObjects[3] = { 0 };
@@ -262,9 +272,11 @@ void CPUGPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* fi
 
 		// Writes the current pixels back into the buffer
 		errNum |= clSetKernelArg(cpuKernel, 0, sizeof(cl_uint2), resolution);
-		errNum |= clSetKernelArg(cpuKernel, 1, sizeof(cl_mem), &memObjects[0]);
-		errNum |= clSetKernelArg(cpuKernel, 2, sizeof(cl_mem), &cpuInputBuf);
-		errNum |= clSetKernelArg(cpuKernel, 3, sizeof(cl_mem), &cpuOutputBuf);
+		errNum |= clSetKernelArg(cpuKernel, 1, sizeof(cl_uint), &offset);
+		errNum |= clSetKernelArg(cpuKernel, 2, sizeof(cl_uint), &filterSize);
+		errNum |= clSetKernelArg(cpuKernel, 3, sizeof(cl_mem), &memObjects[0]);
+		errNum |= clSetKernelArg(cpuKernel, 4, sizeof(cl_mem), &cpuInputBuf);
+		errNum |= clSetKernelArg(cpuKernel, 5, sizeof(cl_mem), &cpuOutputBuf);
 
 		globalWorkSize[1] = resolution->y / 2;
 		errNum |= clEnqueueNDRangeKernel(cpuCommandQueue, cpuKernel, 2, NULL,
@@ -287,11 +299,14 @@ void CPUGPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* fi
 			return;
 		}
 
+		offset = resolution->y / 2;
 		// Writes the current pixels back into the buffer
 		errNum |= clSetKernelArg(gpuKernel, 0, sizeof(cl_uint2), resolution);
-		errNum |= clSetKernelArg(gpuKernel, 1, sizeof(cl_mem), &memObjects[0]);
-		errNum |= clSetKernelArg(gpuKernel, 2, sizeof(cl_mem), &gpuInputBuf);
-		errNum |= clSetKernelArg(gpuKernel, 3, sizeof(cl_mem), &gpuOutputBuf);
+		errNum |= clSetKernelArg(gpuKernel, 1, sizeof(cl_uint), &offset);
+		errNum |= clSetKernelArg(gpuKernel, 2, sizeof(cl_uint), &filterSize);
+		errNum |= clSetKernelArg(gpuKernel, 3, sizeof(cl_mem), &memObjects[0]);
+		errNum |= clSetKernelArg(gpuKernel, 4, sizeof(cl_mem), &gpuInputBuf);
+		errNum |= clSetKernelArg(gpuKernel, 5, sizeof(cl_mem), &gpuOutputBuf);
 
 		globalWorkSize[1] = (resolution->y / 2) + (resolution->y % 2);
 		errNum |= clEnqueueNDRangeKernel(gpuCommandQueue, gpuKernel, 2, NULL,
@@ -331,7 +346,7 @@ void CPUGPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* fi
 		double seconds;
 		if (timer->Diff(seconds))
 			std::cerr << "Warning: timer returned negative difference!" << std::endl;
-		std::cout << "OpenCL on CPU ran in " << seconds << "s" << std::endl;
+		std::cout << "OpenCL on both ran in " << seconds << "s" << std::endl;
 
 		globalWorkSize[1] = resolution->y;
 

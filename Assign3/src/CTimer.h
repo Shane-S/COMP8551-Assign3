@@ -1,13 +1,7 @@
 #ifndef CTIMER_H
 #define CTIMER_H
 
-#ifdef WIN32
-
-#include <windows.h>
-#include <cstdint>
 #include <chrono>
-
-#endif
 
 class CTimer
 {
