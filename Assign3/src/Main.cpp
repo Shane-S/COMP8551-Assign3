@@ -6,7 +6,7 @@
 #include "Gaussian.h"
 #include "CTimer.h"
 
-#define SHANE
+#define LABCOMP_SHANE
 
 #ifdef TREVOR
 #define IMAGE_PATH "D:\\Trevor\\Repos\\COMP8551-Assign3\\Assign3\\cat.png"
@@ -16,6 +16,11 @@
 #ifdef SHANE
 #define IMAGE_PATH "D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\cat.png"
 #define KERNEL_PATH "D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\src\\Filter.cl"
+#endif
+
+#ifdef LABCOMP_SHANE
+#define IMAGE_PATH "H:\\MyCourses\\COMP8551\\COMP8551-Assign3\\Assign3\\cat.png"
+#define KERNEL_PATH "H:\\MyCourses\\COMP8551\\COMP8551-Assign3\\Assign3\\src\\Filter.cl"
 #endif
 
 #undef main
@@ -57,7 +62,7 @@ void GPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* filte
 	CLPlatform* platform = NULL;
 	bool found = false;
 	for (int i = 0; i < numPlats && !found; i++) {
-		for (int j = 0; j < platforms[j].numDevices; j++) {
+		for (int j = 0; j < platforms[i].numDevices; j++) {
 			if ((platforms[i].devices[j].type & CL_DEVICE_TYPE_GPU) == CL_DEVICE_TYPE_GPU) {
 				found = true;
 				platform = platforms + i;
@@ -133,7 +138,7 @@ void CPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* filte
 	CLPlatform* platform = NULL;
 	bool found = false;
 	for (int i = 0; i < numPlats && !found; i++) {
-		for (int j = 0; j < platforms[j].numDevices; j++) {
+		for (int j = 0; j < platforms[i].numDevices; j++) {
 			if ((platforms[i].devices[j].type & CL_DEVICE_TYPE_CPU) == CL_DEVICE_TYPE_CPU) {
 				found = true;
 				platform = platforms + i;
