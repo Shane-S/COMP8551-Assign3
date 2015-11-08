@@ -77,6 +77,7 @@ bool CheckOpenCLError(cl_int errNum, const char *errMsg) {
 }
 
 void FreeCLDevice(CLDevice* device) {
+	clReleaseDevice(device->id);
 	free(device->name);
 }
 
@@ -84,6 +85,7 @@ void FreeCLPlatform(CLPlatform* platform) {
 	for (int i = 0; i < platform->numDevices; i++) {
 		FreeCLDevice(&platform->devices[i]);
 	}
+
 	free(platform->devices);
 	free(platform->name);
 	free(platform->vendor);
@@ -240,20 +242,29 @@ cl_int GetCLPlatforms(CLPlatform** platforms, cl_uint* numPlatforms) {
 	return CL_SUCCESS;
 }
 
-//  Create an OpenCL context on the first available platform using
-//  either a GPU or CPU depending on what is available.
-cl_context CreateContext(CLPlatform* platform)
+//  Create an OpenCL context for the given devices in the given platform. If platform is NULL, uses whatever platform works.
+cl_context CreateContext(CLPlatform* platform, size_t numDevices, CLDevice* devices)
 {
-	// Create a context from the first platform (for now)
-	cl_context_properties contextProperties[] =
-	{
-		CL_CONTEXT_PLATFORM,
-		(cl_context_properties)platform->id,
-		0
-	};
-	cl_context context = NULL;
+	cl_device_id* ids = (cl_device_id*)malloc(sizeof(cl_device_id) * numDevices);
+	for (size_t i = 0; i < numDevices; i++) {
+		ids[i] = devices[i].id;
+	}
+
 	cl_int errNum;
-	context = clCreateContextFromType(contextProperties, CL_DEVICE_TYPE_ALL, NULL, NULL, &errNum);
+	cl_context context = NULL;
+	if (platform != NULL) {
+		cl_context_properties props[] =
+		{
+			CL_CONTEXT_PLATFORM,
+			(cl_context_properties)platform->id,
+			0
+		};
+		context = clCreateContext(props, numDevices, ids, NULL, NULL, &errNum);
+	} else {
+		context = clCreateContext(NULL, numDevices, ids, NULL, NULL, &errNum);
+	}
+	
+	free(ids);
 	return errNum == CL_SUCCESS ? context : NULL;
 }
 

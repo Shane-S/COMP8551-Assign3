@@ -5,17 +5,15 @@
 
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
 
-#ifdef __APPLE__
-
-#include <OpenCL/opencl.h>
-#include <sys/time.h>
-
-#else
-
+#ifdef WIN32
 #include <CL/opencl.h>
 #include <Windows.h>
 
-int gettimeofday(struct timeval * tp, struct timezone * tzp);
+
+#else
+
+#include <OpenCL/opencl.h>
+#include <sys/time.h>
 
 #endif
 #define ARRAY_SIZE (1024 * 640)
@@ -79,7 +77,7 @@ bool CheckOpenCLError(cl_int errNum, const char *errMsg);
 /// Creates an OpenCL context using the first available platform, if any.
 /// </summary>
 /// <returns>An OpenCL context or NULL on failure.</returns>
-cl_context CreateContext(CLPlatform* platform);
+cl_context CreateContext(CLPlatform* platform, size_t numDevices, CLDevice* devices);
 
 /// <summary>
 /// Compiles the specified OpenCL kernel for the given device.
