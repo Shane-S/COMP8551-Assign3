@@ -85,7 +85,7 @@ void GPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* filte
 	timer->Start();
 
 	// Writes the current pixels back into the buffer
-	CreateMemObjects(ctx, filter, pixels, memObjects);
+	CreateMemObjects(ctx, filter, pixels, resolution->x * resolution->y, memObjects);
 
 	errNum |= clSetKernelArg(kernel, 0, sizeof(cl_uint2), resolution);
 	errNum |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &memObjects[0]);
@@ -162,7 +162,7 @@ void CPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* filte
 	timer->Start();
 
 	// Writes the current pixels back into the buffer
-	CreateMemObjects(ctx, filter, pixels, memObjects);
+	CreateMemObjects(ctx, filter, pixels, resolution->x * resolution->y, memObjects);
 	errNum |= clSetKernelArg(kernel, 0, sizeof(cl_uint2), resolution);
 	errNum |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &memObjects[0]);
 	errNum |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &memObjects[1]);
@@ -199,7 +199,143 @@ void CPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* filte
 	SDL_UnlockTexture(tex);
 }
 
-void CPUGPUTest() {
+void CPUGPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* filter, cl_uint2* resolution, CTimer* timer,
+	size_t* globalWorkSize, size_t* localWorkSize) {
+		int pitch; // bytes per row
+		void* pixels;
+		if (SDL_LockTexture(tex, NULL, &pixels, &pitch) < 0) {
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
+			return;
+		}
+
+		CLDevice devices[2] = { 0 };
+		bool foundCPU = false;
+		bool foundGPU = false;
+		for (int i = 0; i < numPlats && !(foundCPU && foundGPU); i++) {
+			for (int j = 0; j < platforms[i].numDevices; j++) {
+				if ((platforms[i].devices[j].type & CL_DEVICE_TYPE_CPU) == CL_DEVICE_TYPE_CPU) {
+					foundCPU = true;
+					devices[0] = platforms[i].devices[j];
+				} else if ((platforms[i].devices[j].type & CL_DEVICE_TYPE_GPU) == CL_DEVICE_TYPE_GPU) {
+					foundGPU = true;
+					devices[1] = platforms[i].devices[j];
+				}
+			}
+		}
+		if (!foundCPU && !foundGPU) {
+			std::cerr << "Couldn't find one of the devices!" << std::endl;
+			return;
+		}
+
+		uint32_t chunkSize = (resolution->x * resolution->y * sizeof(cl_uchar4)) / 2;
+		uint32_t remainderSize = (resolution->x * resolution->y * sizeof(cl_uchar4)) % 2;
+		cl_int errNum = 0;
+		cl_context ctx = CreateContext(NULL, 2, devices);
+		cl_mem memObjects[3] = { 0 };
+		CreateMemObjects(ctx, filter, pixels, resolution->x * resolution->y, memObjects);
+
+		// Compile some shit for the CPU
+		cl_event cpuFinishEvent;
+		cl_buffer_region cpuBufferRegion[1] = {
+			0,
+			chunkSize
+		};
+		cl_command_queue cpuCommandQueue = clCreateCommandQueue(ctx, devices[0].id, 0, NULL);
+		cl_program cpuProgram = CreateProgram(ctx, devices[0].id, KERNEL_PATH);
+		cl_kernel cpuKernel = clCreateKernel(cpuProgram, "gaussian_kernel", NULL);
+		cl_mem cpuInputBuf = clCreateSubBuffer(memObjects[1], CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, CL_BUFFER_CREATE_TYPE_REGION, cpuBufferRegion, &errNum);
+		cl_mem cpuOutputBuf = clCreateSubBuffer(memObjects[2], CL_MEM_WRITE_ONLY, CL_BUFFER_CREATE_TYPE_REGION, cpuBufferRegion, &errNum);
+
+		// Compile some shit for the GPU
+		cl_event gpuFinishEvent;
+		cl_buffer_region gpuBufferRegion[1] = {
+			chunkSize,
+			chunkSize + remainderSize
+		};
+		cl_command_queue gpuCommandQueue = clCreateCommandQueue(ctx, devices[1].id, 0, NULL);
+		cl_program gpuProgram = CreateProgram(ctx, devices[1].id, KERNEL_PATH);
+		cl_kernel gpuKernel = clCreateKernel(gpuProgram, "gaussian_kernel", NULL);
+		cl_mem gpuInputBuf = clCreateSubBuffer(memObjects[1], CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, CL_BUFFER_CREATE_TYPE_REGION, gpuBufferRegion, &errNum);
+		cl_mem gpuOutputBuf = clCreateSubBuffer(memObjects[2], CL_MEM_WRITE_ONLY, CL_BUFFER_CREATE_TYPE_REGION, gpuBufferRegion, &errNum);
+
+		timer->Start();
+
+		// Writes the current pixels back into the buffer
+		errNum |= clSetKernelArg(cpuKernel, 0, sizeof(cl_uint2), resolution);
+		errNum |= clSetKernelArg(cpuKernel, 1, sizeof(cl_mem), &memObjects[0]);
+		errNum |= clSetKernelArg(cpuKernel, 2, sizeof(cl_mem), &cpuInputBuf);
+		errNum |= clSetKernelArg(cpuKernel, 3, sizeof(cl_mem), &cpuOutputBuf);
+
+		globalWorkSize[1] = resolution->y / 2;
+		errNum |= clEnqueueNDRangeKernel(cpuCommandQueue, cpuKernel, 2, NULL,
+			globalWorkSize, localWorkSize,
+			0, NULL, NULL);
+		if (errNum != CL_SUCCESS) {
+			std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
+			Cleanup(ctx, cpuCommandQueue, cpuProgram, cpuKernel, memObjects);
+			return;
+		}
+
+		// Read the output buffer back to the Host
+		errNum = clEnqueueReadBuffer(cpuCommandQueue, cpuOutputBuf, CL_FALSE,
+			0, globalWorkSize[0] * globalWorkSize[1] * sizeof(cl_uchar4), pixels,
+			0, NULL, &cpuFinishEvent);
+		if (errNum != CL_SUCCESS)
+		{
+			std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
+			Cleanup(ctx, cpuCommandQueue, cpuProgram, cpuKernel, memObjects);
+			return;
+		}
+
+		// Writes the current pixels back into the buffer
+		errNum |= clSetKernelArg(gpuKernel, 0, sizeof(cl_uint2), resolution);
+		errNum |= clSetKernelArg(gpuKernel, 1, sizeof(cl_mem), &memObjects[0]);
+		errNum |= clSetKernelArg(gpuKernel, 2, sizeof(cl_mem), &gpuInputBuf);
+		errNum |= clSetKernelArg(gpuKernel, 3, sizeof(cl_mem), &gpuOutputBuf);
+
+		globalWorkSize[1] = (resolution->y / 2) + (resolution->y % 2);
+		errNum |= clEnqueueNDRangeKernel(gpuCommandQueue, gpuKernel, 2, NULL,
+			globalWorkSize, localWorkSize,
+			0, NULL, NULL);
+		if (errNum != CL_SUCCESS) {
+			std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
+			Cleanup(ctx, gpuCommandQueue, gpuProgram, gpuKernel, memObjects);
+			return;
+		}
+
+		// Read the output buffer back to the Host
+		errNum = clEnqueueReadBuffer(gpuCommandQueue, gpuOutputBuf, CL_FALSE,
+			0, globalWorkSize[0] * globalWorkSize[1] * sizeof(cl_uchar4), (cl_uchar*)pixels + chunkSize,
+			0, NULL, &gpuFinishEvent);
+		if (errNum != CL_SUCCESS)
+		{
+			std::cerr << "Error: " << CLErrorToString(errNum) << std::endl;
+			Cleanup(ctx, gpuCommandQueue, gpuProgram, gpuKernel, memObjects);
+			return;
+		}
+
+		cl_event events[2] = { cpuFinishEvent, gpuFinishEvent };
+		clWaitForEvents(2, events);
+
+		timer->End();
+		clReleaseMemObject(cpuInputBuf);
+		clReleaseMemObject(gpuInputBuf);
+		clReleaseMemObject(cpuOutputBuf);
+		clReleaseMemObject(gpuOutputBuf);
+		clReleaseEvent(cpuFinishEvent);
+		clReleaseEvent(gpuFinishEvent);
+		Cleanup(ctx, gpuCommandQueue, gpuProgram, gpuKernel, memObjects);
+		for (int i = 0; i < 3; i++) memObjects[i] = 0;
+		Cleanup(ctx, cpuCommandQueue, cpuProgram, cpuKernel, memObjects);
+
+		double seconds;
+		if (timer->Diff(seconds))
+			std::cerr << "Warning: timer returned negative difference!" << std::endl;
+		std::cout << "OpenCL on CPU ran in " << seconds << "s" << std::endl;
+
+		globalWorkSize[1] = resolution->y;
+
+		SDL_UnlockTexture(tex);
 }
 
 int main() {
@@ -351,25 +487,8 @@ int main() {
 						break;
 
 					case SDLK_b:
-					{
-						if (SDL_LockTexture(tex, NULL, &pixels, &pitch) < 0) {
-							SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
-							return 1;
-						}
-
-						timer.Start();
-
-						// Run on both cpu and gpu here
-
-						timer.End();
-						double seconds;
-						if (timer.Diff(seconds))
-							std::cerr << "Warning: timer returned negative difference!" << std::endl;
-						std::cout << "Both ran in " << seconds << std::endl << std::endl;
-
-						SDL_UnlockTexture(tex);
+						CPUGPUTest(platforms, numPlats, tex, filter, &resolution, &timer, globalWorkSize, localWorkSize);
 						break;
-					}
                 }
         }
 

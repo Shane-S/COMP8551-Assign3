@@ -265,6 +265,11 @@ cl_context CreateContext(CLPlatform* platform, size_t numDevices, CLDevice* devi
 	}
 	
 	free(ids);
+	if (errNum != CL_SUCCESS) {
+		std::cerr << "Error while creating context: " << CLErrorToString(errNum) << std::endl;
+		return NULL;
+	}
+
 	return errNum == CL_SUCCESS ? context : NULL;
 }
 
@@ -312,15 +317,17 @@ cl_program CreateProgram(cl_context context, cl_device_id device, const char* fi
 }
 
 
-bool CreateMemObjects(cl_context context, cl_float* filter, void* pixels, cl_mem memObjects[3]) {
+bool CreateMemObjects(cl_context context, cl_float* filter, void* pixels, size_t pixelArraySize, cl_mem memObjects[3]) {
 
-	memObjects[0] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_float) * FILTER_SIZE * FILTER_SIZE, filter, NULL);
-	memObjects[1] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, ARRAY_SIZE * sizeof(cl_uchar4), pixels, NULL);
-	memObjects[2] = clCreateBuffer(context, CL_MEM_WRITE_ONLY, ARRAY_SIZE * sizeof(cl_uchar4), NULL, NULL);
+	cl_int errNum;
+
+	memObjects[0] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_float) * FILTER_SIZE * FILTER_SIZE, filter, &errNum);
+	memObjects[1] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, pixelArraySize * sizeof(cl_uchar4), pixels, &errNum);
+	memObjects[2] = clCreateBuffer(context, CL_MEM_WRITE_ONLY, pixelArraySize * sizeof(cl_uchar4), NULL, &errNum);
 
 	if (memObjects[0] == NULL || memObjects[1] == NULL || memObjects[2] == NULL)
 	{
-		std::cerr << "Error creating memory objects." << std::endl;
+		std::cerr << "Error creating memory objects: " << CLErrorToString(errNum) << std::endl;
 		return false;
 	}
 
