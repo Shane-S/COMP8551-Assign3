@@ -6,7 +6,7 @@
 #include "Gaussian.h"
 #include "CTimer.h"
 
-#define LABCOMP_SHANE
+#define TREVOR
 
 #ifdef TREVOR
 #define IMAGE_PATH "D:\\Trevor\\Repos\\COMP8551-Assign3\\Assign3\\cat.png"
@@ -253,9 +253,7 @@ void CPUGPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* fi
 		cl_command_queue cpuCommandQueue = clCreateCommandQueue(ctx, devices[0].id, 0, NULL);
 		cl_program cpuProgram = CreateProgram(ctx, devices[0].id, KERNEL_PATH);
 		cl_kernel cpuKernel = clCreateKernel(cpuProgram, "gaussian_kernel", NULL);
-		cl_mem cpuInputBuf = clCreateSubBuffer(memObjects[1], CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, CL_BUFFER_CREATE_TYPE_REGION, cpuBufferRegion, &errNum);
-		cl_mem cpuOutputBuf = clCreateSubBuffer(memObjects[2], CL_MEM_WRITE_ONLY, CL_BUFFER_CREATE_TYPE_REGION, cpuBufferRegion, &errNum);
-
+		
 		// Compile some shit for the GPU
 		cl_event gpuFinishEvent;
 		cl_buffer_region gpuBufferRegion[1] = {
@@ -265,9 +263,7 @@ void CPUGPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* fi
 		cl_command_queue gpuCommandQueue = clCreateCommandQueue(ctx, devices[1].id, 0, NULL);
 		cl_program gpuProgram = CreateProgram(ctx, devices[1].id, KERNEL_PATH);
 		cl_kernel gpuKernel = clCreateKernel(gpuProgram, "gaussian_kernel", NULL);
-		cl_mem gpuInputBuf = clCreateSubBuffer(memObjects[1], CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, CL_BUFFER_CREATE_TYPE_REGION, gpuBufferRegion, &errNum);
-		cl_mem gpuOutputBuf = clCreateSubBuffer(memObjects[2], CL_MEM_WRITE_ONLY, CL_BUFFER_CREATE_TYPE_REGION, gpuBufferRegion, &errNum);
-
+		
 		timer->Start();
 
 		// Writes the current pixels back into the buffer
@@ -275,8 +271,8 @@ void CPUGPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* fi
 		errNum |= clSetKernelArg(cpuKernel, 1, sizeof(cl_uint), &offset);
 		errNum |= clSetKernelArg(cpuKernel, 2, sizeof(cl_uint), &filterSize);
 		errNum |= clSetKernelArg(cpuKernel, 3, sizeof(cl_mem), &memObjects[0]);
-		errNum |= clSetKernelArg(cpuKernel, 4, sizeof(cl_mem), &cpuInputBuf);
-		errNum |= clSetKernelArg(cpuKernel, 5, sizeof(cl_mem), &cpuOutputBuf);
+		errNum |= clSetKernelArg(cpuKernel, 4, sizeof(cl_mem), &memObjects[1]);
+		errNum |= clSetKernelArg(cpuKernel, 5, sizeof(cl_mem), &memObjects[2]);
 
 		globalWorkSize[1] = resolution->y / 2;
 		errNum |= clEnqueueNDRangeKernel(cpuCommandQueue, cpuKernel, 2, NULL,
@@ -289,7 +285,7 @@ void CPUGPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* fi
 		}
 
 		// Read the output buffer back to the Host
-		errNum = clEnqueueReadBuffer(cpuCommandQueue, cpuOutputBuf, CL_FALSE,
+		errNum = clEnqueueReadBuffer(cpuCommandQueue, memObjects[2], CL_FALSE,
 			0, globalWorkSize[0] * globalWorkSize[1] * sizeof(cl_uchar4), pixels,
 			0, NULL, &cpuFinishEvent);
 		if (errNum != CL_SUCCESS)
@@ -305,8 +301,8 @@ void CPUGPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* fi
 		errNum |= clSetKernelArg(gpuKernel, 1, sizeof(cl_uint), &offset);
 		errNum |= clSetKernelArg(gpuKernel, 2, sizeof(cl_uint), &filterSize);
 		errNum |= clSetKernelArg(gpuKernel, 3, sizeof(cl_mem), &memObjects[0]);
-		errNum |= clSetKernelArg(gpuKernel, 4, sizeof(cl_mem), &gpuInputBuf);
-		errNum |= clSetKernelArg(gpuKernel, 5, sizeof(cl_mem), &gpuOutputBuf);
+		errNum |= clSetKernelArg(gpuKernel, 4, sizeof(cl_mem), &memObjects[1]);
+		errNum |= clSetKernelArg(gpuKernel, 5, sizeof(cl_mem), &memObjects[2]);
 
 		globalWorkSize[1] = (resolution->y / 2) + (resolution->y % 2);
 		errNum |= clEnqueueNDRangeKernel(gpuCommandQueue, gpuKernel, 2, NULL,
@@ -319,8 +315,8 @@ void CPUGPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* fi
 		}
 
 		// Read the output buffer back to the Host
-		errNum = clEnqueueReadBuffer(gpuCommandQueue, gpuOutputBuf, CL_FALSE,
-			0, globalWorkSize[0] * globalWorkSize[1] * sizeof(cl_uchar4), (cl_uchar*)pixels + chunkSize,
+		errNum = clEnqueueReadBuffer(gpuCommandQueue, memObjects[2], CL_FALSE,
+			chunkSize, globalWorkSize[0] * globalWorkSize[1] * sizeof(cl_uchar4), (cl_uchar*)pixels + chunkSize,
 			0, NULL, &gpuFinishEvent);
 		if (errNum != CL_SUCCESS)
 		{
@@ -333,14 +329,10 @@ void CPUGPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* fi
 		clWaitForEvents(2, events);
 
 		timer->End();
-		clReleaseMemObject(cpuInputBuf);
-		clReleaseMemObject(gpuInputBuf);
-		clReleaseMemObject(cpuOutputBuf);
-		clReleaseMemObject(gpuOutputBuf);
 		clReleaseEvent(cpuFinishEvent);
 		clReleaseEvent(gpuFinishEvent);
 		Cleanup(ctx, gpuCommandQueue, gpuProgram, gpuKernel, memObjects);
-		for (int i = 0; i < 3; i++) memObjects[i] = 0;
+		for (int i = 0; i < sizeof(memObjects) / sizeof(cl_mem); i++) memObjects[i] = 0;
 		Cleanup(ctx, cpuCommandQueue, cpuProgram, cpuKernel, memObjects);
 
 		double seconds;

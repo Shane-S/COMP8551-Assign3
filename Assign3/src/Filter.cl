@@ -8,7 +8,7 @@ uint pos(uint x, uint y, uint width) {
 __kernel void gaussian_kernel(const uint2 dimensions, const uint input_y_off, const uint filter_size, __global const float* filter, __global uchar4 *input_image, __global uchar4 *result)
 {
 	uint x = get_global_id(0);
-	uint y = get_global_id(1);
+	uint y = get_global_id(1) + input_y_off;
 	uint offset = pos(x, y, dimensions.x);
 
 	uint row;
@@ -21,7 +21,7 @@ __kernel void gaussian_kernel(const uint2 dimensions, const uint input_y_off, co
 			uint offx = col - dim;
 			uint offy = row - dim;
 			if (!(x + offx < 0 || x + offx > dimensions.x - 1 ||
-				y + input_y_off + offy < 0 || y + input_y_off + offy > dimensions.y - 1)) {
+				y + offy < 0 || y  + offy > dimensions.y - 1)) {
 				uint off_img = pos(x + offx, y + offy, dimensions.x);
 				uint off_filter = pos(col, row, filter_size);
 				sum.xyz += convert_float4(input_image[off_img]).xyz * filter[off_filter];
