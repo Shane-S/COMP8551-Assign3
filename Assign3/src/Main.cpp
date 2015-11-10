@@ -319,7 +319,8 @@ void CPUGPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* fi
 		clReleaseEvent(cpuFinishEvent);
 		clReleaseEvent(gpuFinishEvent);
 		Cleanup(ctx, gpuCommandQueue, gpuProgram, gpuKernel, memObjects);
-		for (int i = 0; i < sizeof(memObjects) / sizeof(cl_mem); i++) memObjects[i] = 0;
+		for (int i = 0; i < 3; i++) memObjects[i] = 0;
+		ctx = 0;
 		Cleanup(ctx, cpuCommandQueue, cpuProgram, cpuKernel, memObjects);
 
 		double seconds;
