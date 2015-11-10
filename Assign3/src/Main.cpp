@@ -6,22 +6,9 @@
 #include "Gaussian.h"
 #include "CTimer.h"
 
-#define TREVOR
-
-#ifdef TREVOR
-#define IMAGE_PATH "D:\\Trevor\\Repos\\COMP8551-Assign3\\Assign3\\cat.png"
-#define KERNEL_PATH "D:\\Trevor\\Repos\\COMP8551-Assign3\\Assign3\\src\\Filter.cl"
-#endif
-
-#ifdef SHANE
-#define IMAGE_PATH "D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\cat.png"
-#define KERNEL_PATH "D:\\Documents\\School\\BCIT\\Assignments\\Term7\\COMP_8551\\Assign3\\Assign3\\src\\Filter.cl"
-#endif
-
-#ifdef LABCOMP_SHANE
-#define IMAGE_PATH "H:\\MyCourses\\COMP8551\\COMP8551-Assign3\\Assign3\\cat.png"
-#define KERNEL_PATH "H:\\MyCourses\\COMP8551\\COMP8551-Assign3\\Assign3\\src\\Filter.cl"
-#endif
+#define LABCOMP_SHANE
+#define IMAGE_PATH "cat.png"
+#define KERNEL_PATH "Filter.cl"
 
 #undef main
 
@@ -244,7 +231,7 @@ void CPUGPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* fi
 		cl_mem memObjects[3] = { 0 };
 		CreateMemObjects(ctx, filter, pixels, resolution->x * resolution->y, memObjects);
 
-		// Compile some shit for the CPU
+		// Compile for the CPU
 		cl_event cpuFinishEvent;
 		cl_buffer_region cpuBufferRegion[1] = {
 			0,
@@ -254,7 +241,7 @@ void CPUGPUTest(CLPlatform* platforms, int numPlats, SDL_Texture* tex, float* fi
 		cl_program cpuProgram = CreateProgram(ctx, devices[0].id, KERNEL_PATH);
 		cl_kernel cpuKernel = clCreateKernel(cpuProgram, "gaussian_kernel", NULL);
 		
-		// Compile some shit for the GPU
+		// Compile for the GPU
 		cl_event gpuFinishEvent;
 		cl_buffer_region gpuBufferRegion[1] = {
 			chunkSize,
@@ -353,8 +340,8 @@ int main() {
 
 	int initflags = IMG_INIT_PNG;
 	int returnedflags = IMG_Init(initflags);
-	if (returnedflags & initflags != initflags) {
-		std::cerr << "Shit: " << IMG_GetError() << std::endl;
+	if ((returnedflags & initflags) != initflags) {
+		std::cerr << "Oops: " << IMG_GetError() << std::endl;
 		return 2;
 	}
 
@@ -371,7 +358,7 @@ int main() {
 
 	image_argb8888 = SDL_ConvertSurfaceFormat(image_raw, SDL_PIXELFORMAT_ARGB8888, 0);
 	if (!image_argb8888) {
-		std::cerr << "You're fucked: " << SDL_GetError() << std::endl;
+		std::cerr << "Dang: " << SDL_GetError() << std::endl;
 		return 1338;
 	}
 
@@ -419,7 +406,7 @@ int main() {
 	
 	for (int i = 0; i < numPlats; i++) 
 	{
-		std::cout << "Vendor: " << platforms[i].vendor << "; Name: " << platforms[i].name << std::endl;
+		std::cout << "Vendor: " << platforms[i].vendor << "; Name: " << platforms[i].name << "; Version: " << platforms[i].version.major << "." << platforms[i].version.minor << std::endl;
 		for (int j = 0; j < platforms[i].numDevices; j++) 
 		{
 			std::cout << "\ttype " << platforms[i].devices[j].type << ":" << std::endl;
@@ -437,16 +424,11 @@ int main() {
 		std::cout << std::endl;
 	}
 
-	// Allocate like 3MB of memory to fit our random values
-	// Lol
-	// There's no rand() in OpenCL C, but we could use one of these techniques from StackOverlow if this becomes an issue
-	// http://stackoverflow.com/questions/9912143/how-to-get-a-random-number-in-opencl
 	cl_uint2 resolution = { r.w, r.h };
 
     // Set the work group sizes for our OpenCL kernel
 	size_t globalWorkSize[2] = { r.w, r.h };
-	size_t localWorkSize[2] = { 1, 1
-	};
+	size_t localWorkSize[2] = { 1, 1 };
 
 	// Generate a Gaussian Filter
 	float filter[FILTER_SIZE * FILTER_SIZE];
@@ -464,10 +446,6 @@ int main() {
 	SDL_UnlockTexture(tex);
 
 	CTimer timer;
-	uint64_t seconds, useconds;
-
-	// Objects that we'll use to do our stuff and things like that
-	cl_event kernelEvents[2];
 
     bool done = false;
 	while (!done)

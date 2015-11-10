@@ -40,12 +40,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\Random.cl">
-      <Filter>Source Files</Filter>
-    </None>
-    <None Include="src\Invert.cl">
-      <Filter>Source Files</Filter>
-    </None>
     <None Include="src\Filter.cl">
       <Filter>Source Files</Filter>
     </None>
